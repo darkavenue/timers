@@ -338,14 +338,14 @@ select{appearance:auto}
     <div class="field">
       <label>Deadline (time from now)</label>
       <div style="display:flex;gap:2px;margin-bottom:5px">
-        <button type="button" id="f-mode-hl" onclick="setDeadlineMode('hl')" style="font-size:11px;padding:3px 10px;border-radius:4px 0 0 4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-weight:600">HL</button>
-        <button type="button" id="f-mode-rl" onclick="setDeadlineMode('rl')" style="font-size:11px;padding:3px 10px;border-radius:0 4px 4px 0;border:1px solid var(--border);background:transparent;color:var(--text2)">RL</button>
+        <button type="button" id="f-mode-rl" onclick="setDeadlineMode('rl')" style="font-size:11px;padding:3px 10px;border-radius:4px 0 0 4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-weight:600">RL</button>
+        <button type="button" id="f-mode-hl" onclick="setDeadlineMode('hl')" style="font-size:11px;padding:3px 10px;border-radius:0 4px 4px 0;border:1px solid var(--border);background:transparent;color:var(--text2)">HL</button>
       </div>
       <div class="row" style="gap:4px;align-items:center">
-        <input type="number" id="f-hl-days" placeholder="0" min="0" style="max-width:60px"><span style="font-size:11px;color:var(--text3)">d</span>
-        <input type="number" id="f-hl-hours" placeholder="0" min="0" max="23" style="max-width:55px"><span style="font-size:11px;color:var(--text3)">h</span>
-        <input type="number" id="f-hl-mins" placeholder="0" min="0" max="59" style="max-width:55px"><span style="font-size:11px;color:var(--text3)">m</span>
-        <span id="f-mode-label" style="font-size:10px;color:var(--text3);margin-left:4px">HL</span>
+        <input type="number" id="f-hl-days" placeholder="0" min="0" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">d</span>
+        <input type="number" id="f-hl-hours" placeholder="0" min="0" max="23" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">h</span>
+        <input type="number" id="f-hl-mins" placeholder="0" min="0" max="59" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">m</span>
+        <span id="f-mode-label" style="font-size:10px;color:var(--text3);margin-left:4px">RL</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
         <label style="font-size:11px;color:var(--text2);margin:0;display:flex;align-items:center;gap:4px;cursor:pointer">
@@ -513,7 +513,7 @@ let solTab = 'priority';
 let mapTab = 'overdue';
 let editingId = null;
 let pantryFilter = 'all';
-let deadlineMode = 'hl'; // 'hl' or 'rl'
+let deadlineMode = 'rl'; // 'hl' or 'rl'
 
 function setDeadlineMode(mode) {
   deadlineMode = mode;
@@ -1347,7 +1347,7 @@ function updateTabOptions() {
 
 function openAdd() {
   editingId = null;
-  deadlineMode = 'hl';
+  deadlineMode = 'rl';
   document.getElementById('modal-title').textContent = 'Add Timer';
   document.getElementById('btn-delete').style.display = 'none';
   document.getElementById('f-board').value = 'sol';
@@ -1361,7 +1361,7 @@ function openAdd() {
   document.getElementById('f-hl-mins').value = '';
   document.getElementById('f-clear-deadline').checked = false;
   document.getElementById('f-hl-remaining').textContent = '';
-  setDeadlineMode('hl');
+  setDeadlineMode('rl');
   document.getElementById('f-payment').value = 'food';
   document.getElementById('f-recur').value = '';
   document.getElementById('f-important').value = '0';
@@ -1374,7 +1374,7 @@ function openEdit(id) {
   const t = timers.find(x => x.id === id);
   if (!t) return;
   editingId = id;
-  deadlineMode = 'hl';
+  deadlineMode = 'rl';
   document.getElementById('modal-title').textContent = 'Edit: ' + t.name;
   document.getElementById('btn-delete').style.display = '';
   document.getElementById('f-board').value = t.board;
@@ -1389,14 +1389,16 @@ function openEdit(id) {
   document.getElementById('f-hl-hours').value = '';
   document.getElementById('f-hl-mins').value = '';
   document.getElementById('f-clear-deadline').checked = false;
-  setDeadlineMode('hl');
+  setDeadlineMode('rl');
   if (t.deadline) {
     const remainMs = new Date(t.deadline) - new Date();
     if (remainMs > 0) {
       const hl = rlMsToHL(remainMs);
-      document.getElementById('f-hl-days').value = hl.d;
-      document.getElementById('f-hl-hours').value = hl.h;
-      document.getElementById('f-hl-mins').value = hl.m;
+      // Show RL remaining in fields (default mode)
+      const rlTotalMins = Math.floor(remainMs / 60000);
+      document.getElementById('f-hl-days').value = Math.floor(rlTotalMins / 1440);
+      document.getElementById('f-hl-hours').value = Math.floor((rlTotalMins % 1440) / 60);
+      document.getElementById('f-hl-mins').value = rlTotalMins % 60;
       const rlH = Math.floor(remainMs / 3600000);
       const rlM = Math.floor((remainMs % 3600000) / 60000);
       document.getElementById('f-hl-remaining').textContent = `${hl.d}d ${hl.h}h ${hl.m}m HL · ${rlH}h ${rlM}m RL remaining`;
@@ -1490,14 +1492,14 @@ function resetTimer(id) {
     const rlMs = t.recur * 6 * 3600000;
     t.deadline = new Date(Date.now() + rlMs).toISOString();
   } else {
-    const input = prompt('Time from now — HL default (e.g. "3d 12h")\nPrefix with rl for real time (e.g. "rl 2d 6h")\nEnter 0 to clear:');
+    const input = prompt('Time from now — RL default (e.g. "2d 6h")\nPrefix with hl for game time (e.g. "hl 3d 12h")\nEnter 0 to clear:');
     if (input === null) return;
     const trimmed = input.trim();
     if (trimmed === '' || trimmed === '0') {
       t.deadline = null;
     } else {
-      const isRL = /^rl\b/i.test(trimmed);
-      const cleaned = trimmed.replace(/^rl\s*/i, '');
+      const isHL = /^hl\b/i.test(trimmed);
+      const cleaned = trimmed.replace(/^(rl|hl)\s*/i, '');
       const dMatch = cleaned.match(/(\d+)\s*d/i);
       const hMatch = cleaned.match(/(\d+)\s*h/i);
       const mMatch = cleaned.match(/(\d+)\s*m/i);
@@ -1507,11 +1509,11 @@ function resetTimer(id) {
       if (dd === 0 && hh === 0 && mm === 0) {
         const num = parseInt(cleaned);
         if (!isNaN(num) && num > 0) { dd = num; }
-        else { alert('Use format like "3d 12h" or "rl 1d 6h"'); return; }
+        else { alert('Use format like "2d 6h" or "hl 3d 12h"'); return; }
       }
-      const rlMs = isRL
-        ? dd * 86400000 + hh * 3600000 + mm * 60000
-        : dd * 21600000 + hh * 900000 + mm * 15000;
+      const rlMs = isHL
+        ? dd * 21600000 + hh * 900000 + mm * 15000
+        : dd * 86400000 + hh * 3600000 + mm * 60000;
       t.deadline = new Date(Date.now() + rlMs).toISOString();
     }
   }
