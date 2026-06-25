@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sol's Timer Boards</title>
+<style>
+:root {
+  --bg: #1a1a1f;
+  --bg2: #232329;
+  --bg3: #2c2c34;
+  --border: #3a3a44;
+  --text: #e0ddd5;
+  --text2: #9a9790;
+  --text3: #6a6860;
+  --accent: #c4a265;
+  --accent2: #a07d3a;
+  --red: #d44;
+  --red-bg: #3a1c1c;
+  --green: #5a5;
+  --green-bg: #1c2a1c;
+  --amber: #da3;
+  --amber-bg: #2a2a1c;
+  --blue: #68b;
+  --coin: #c4a265;
+  --food: #7a9a5a;
+  --star: #da3;
+}
+@media(prefers-color-scheme:light){
+  :root {
+    --bg: #f5f3ee;
+    --bg2: #eae7e0;
+    --bg3: #ddd9d0;
+    --border: #c5c0b5;
+    --text: #2a2820;
+    --text2: #6a6860;
+    --text3: #9a9790;
+    --accent: #8a6a2a;
+    --accent2: #6a5020;
+    --red: #c33;
+    --red-bg: #f5e0e0;
+    --green: #3a7a3a;
+    --green-bg: #e0f0e0;
+    --amber: #a08020;
+    --amber-bg: #f5f0d0;
+    --blue: #4a7aaa;
+    --coin: #8a6a2a;
+    --food: #4a7a3a;
+    --star: #a08020;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.4;padding:8px;padding-bottom:80px}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:var(--text)}
+input,select,textarea{font-family:inherit;font-size:14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 10px;width:100%}
+select{appearance:auto}
+
+/* HL Clock */
+.hl-clock{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.hl-clock .label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+.hl-clock .date{font-size:15px;font-weight:600;color:var(--accent)}
+.hl-clock .detail{font-size:11px;color:var(--text2)}
+
+/* Board */
+.board{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.board-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.board-header h2{font-size:15px;font-weight:600;margin:0}
+.board-header .toggle{font-size:18px;color:var(--text3);transition:transform .2s}
+.board-header .toggle.collapsed{transform:rotate(-90deg)}
+.board-body{padding:8px}
+.board-body.hidden{display:none}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.tab{padding:4px 10px;border-radius:6px;font-size:12px;border:1px solid var(--border);color:var(--text2);position:relative;white-space:nowrap}
+.tab.active{background:var(--bg3);color:var(--text);border-color:var(--accent2)}
+.tab .badge{font-size:9px;background:var(--red);color:#fff;padding:1px 5px;border-radius:8px;margin-left:4px;vertical-align:1px}
+
+/* Timer rows */
+.timer-list{display:flex;flex-direction:column;gap:4px}
+.timer-row{background:var(--bg3);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;border-left:3px solid transparent;position:relative}
+.timer-row.overdue{border-left-color:var(--red);background:var(--red-bg)}
+.timer-row.urgent{border-left-color:var(--amber)}
+.timer-row.ok{border-left-color:var(--green)}
+.timer-row.unset{border-left-color:var(--text3);opacity:.7}
+.timer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.timer-name{font-weight:600;font-size:13px;flex:1}
+.timer-name .star{color:var(--star);margin-right:3px}
+.timer-countdown{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.timer-countdown.overdue{color:var(--red)}
+.timer-countdown.urgent{color:var(--amber)}
+.timer-countdown.ok{color:var(--green)}
+.timer-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text2)}
+.tag{padding:1px 6px;border-radius:4px;font-size:10px;font-weight:500}
+.tag-coin{background:var(--coin);color:#1a1a1f}
+.tag-food{background:var(--food);color:#fff}
+.tag-role{background:var(--bg);border:1px solid var(--border);color:var(--text2)}
+.tag-loc{background:var(--bg);border:1px solid var(--border);color:var(--text2)}
+.tag-recur{background:var(--accent2);color:#fff}
+.tag-morph{background:var(--blue);color:#fff}
+.timer-date{font-size:11px;color:var(--text3)}
+.timer-actions{display:flex;gap:4px;margin-left:auto}
+.timer-actions button{font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);color:var(--text2)}
+.timer-actions button:hover{background:var(--bg);color:var(--text)}
+
+/* Add button */
+.add-btn{position:fixed;bottom:16px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#1a1a1f;font-size:28px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:90}
+
+/* Toolbar */
+.toolbar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.toolbar button{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);color:var(--text2)}
+
+/* Modal */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px 14px 0 0;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;padding:16px}
+.modal h3{font-size:16px;margin-bottom:12px}
+.modal .field{margin-bottom:10px}
+.modal .field label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.modal .row{display:flex;gap:8px}
+.modal .row>*{flex:1}
+.modal .btn-row{display:flex;gap:8px;margin-top:14px}
+.modal .btn{padding:10px;border-radius:8px;font-size:14px;font-weight:500;text-align:center;flex:1}
+.btn-primary{background:var(--accent);color:#1a1a1f}
+.btn-cancel{border:1px solid var(--border);color:var(--text2)}
+.btn-danger{background:var(--red);color:#fff}
+
+/* Empty state */
+.empty{text-align:center;padding:20px;color:var(--text3);font-size:13px}
+
+/* HL date in timer */
+.hl-date{color:var(--accent);font-size:11px}
+
+/* Farming calendar */
+.farm-cal{background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.farm-cal-title{font-size:12px;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.farm-cal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+.farm-cal-grid.hidden{display:none}
+.farm-month{padding:6px 8px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);font-size:11px;line-height:1.4}
+.farm-month:nth-child(3n){border-right:none}
+.farm-month:nth-last-child(-n+3){border-bottom:none}
+.farm-month .mo-name{font-weight:600;color:var(--text);margin-bottom:2px}
+.farm-month .mo-season{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.farm-month .mo-act{color:var(--text2);font-size:10px;margin-top:2px}
+.farm-month .mo-act .plant{color:var(--green)}
+.farm-month .mo-act .harvest{color:var(--amber)}
+.farm-month .mo-act .tend{color:var(--blue)}
+.farm-month .mo-act .quiet{color:var(--text3);font-style:italic}
+.farm-month.current{background:var(--accent2);background:rgba(196,162,101,0.12)}
+.tag-farm{background:#6a8a3a;color:#fff}
+.tag-window{background:var(--amber);color:#1a1a1f}
+.tag-decay{background:#8a5a3a;color:#fff}
+.tag-chain{background:#7a5aa0;color:#fff}
+
+/* Chain progress */
+.chain-progress{display:flex;align-items:center;gap:3px;margin-top:4px}
+.chain-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.chain-dot.done{background:var(--green)}
+.chain-dot.current{background:var(--amber);box-shadow:0 0 4px var(--amber)}
+.chain-dot.future{background:var(--border)}
+.chain-line{width:12px;height:2px;background:var(--border)}
+.chain-line.done{background:var(--green)}
+.chain-step-label{font-size:10px;color:var(--text2);margin-left:6px}
+
+/* Chain library */
+.chain-lib{margin-bottom:10px}
+.chain-lib-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.chain-lib-header span{font-size:12px;font-weight:600;color:var(--text2)}
+.chain-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:4px}
+.chain-card-top{display:flex;justify-content:space-between;align-items:center}
+.chain-card-name{font-size:13px;font-weight:600}
+.chain-card-steps{font-size:11px;color:var(--text2);margin-top:3px}
+.chain-card-step{display:inline-flex;align-items:center;gap:3px}
+.chain-card-step .arrow{color:var(--text3)}
+.chain-card-actions{display:flex;gap:4px}
+.chain-card-actions button{font-size:11px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);color:var(--text2)}
+.chain-card-actions .start-btn{border-color:var(--green);color:var(--green)}
+
+/* Chain editor modal */
+.chain-step-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;background:var(--bg3);padding:6px 8px;border-radius:6px}
+.chain-step-row input{font-size:12px;padding:5px 7px}
+.chain-step-row .step-num{font-size:11px;font-weight:600;color:var(--text3);min-width:18px}
+.chain-step-row .remove-step{color:var(--red);font-size:14px;padding:0 4px;cursor:pointer;background:none;border:none}
+
+/* Cloud sync */
+.sync-bar{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11px;color:var(--text2)}
+.sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sync-dot.off{background:var(--text3)}
+.sync-dot.ok{background:var(--green)}
+.sync-dot.busy{background:var(--amber);animation:pulse 1s infinite}
+.sync-dot.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;font-size:12px}
+.sync-panel-header{padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--text2)}
+.sync-panel-body{padding:8px 12px;border-top:1px solid var(--border)}
+.sync-panel-body.hidden{display:none}
+.sync-panel .field{margin-bottom:8px}
+.sync-panel .field label{display:block;font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
+.sync-panel .field input{font-size:12px;padding:6px 8px}
+.sync-panel .help{font-size:11px;color:var(--text3);line-height:1.4;margin-top:6px}
+.sync-panel .help a{color:var(--accent)}
+.sync-panel .help ol{margin:4px 0 4px 16px}
+.sync-panel .help li{margin-bottom:3px}
+
+/* Pantry location filter */
+.pantry-filter{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;padding:6px 0}
+.pantry-filter button{font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);color:var(--text2)}
+.pantry-filter button.active{background:var(--bg3);color:var(--text);border-color:var(--accent2)}
+</style>
+</head>
+<body>
+
+<!-- HL Clock -->
+<div class="hl-clock">
+  <div>
+    <div class="label">Harshlands Time</div>
+    <div class="date" id="hl-date">—</div>
+    <div class="detail" id="hl-detail">—</div>
+  </div>
+  <div style="text-align:right">
+    <div class="label">Real Time (EDT)</div>
+    <div class="detail" id="rl-time">—</div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <button onclick="exportData()">⬇ Export</button>
+  <button onclick="document.getElementById('import-file').click()">⬆ Import</button>
+  <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+  <button onclick="syncNow()">☁ Sync Now</button>
+  <button onclick="if(confirm('Reset ALL timers to default roster? This cannot be undone.'))resetToDefaults()">↺ Reset All</button>
+</div>
+
+<!-- Sync status -->
+<div class="sync-bar">
+  <span class="sync-dot off" id="sync-dot"></span>
+  <span id="sync-status">Cloud sync not configured</span>
+</div>
+
+<!-- Sync settings -->
+<div class="sync-panel">
+  <div class="sync-panel-header" onclick="document.getElementById('sync-body').classList.toggle('hidden')">
+    <span>☁ Cloud Sync Settings</span><span>▼</span>
+  </div>
+  <div class="sync-panel-body hidden" id="sync-body">
+    <div class="field">
+      <label>Firebase Database URL</label>
+      <input id="sync-url" placeholder="https://your-project-default-rtdb.firebaseio.com" oninput="saveSyncConfig()">
+    </div>
+    <div class="field">
+      <label>Room Code (same on all devices)</label>
+      <input id="sync-room" placeholder="e.g. sol-timers-secret-7x2k" oninput="saveSyncConfig()">
+    </div>
+    <div class="help">
+      <strong>One-time setup (free, ~10 min):</strong>
+      <ol>
+        <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> and sign in</li>
+        <li>Click <strong>Create a project</strong> → name it anything → skip Analytics → Create</li>
+        <li>In the left sidebar, click <strong>Build → Realtime Database</strong></li>
+        <li>Click <strong>Create Database</strong> → pick any region → choose <strong>Start in test mode</strong> → Enable</li>
+        <li>Copy the URL shown at the top (looks like <code>https://yourproject-default-rtdb.firebaseio.com</code>) and paste it above</li>
+        <li>Make up a room code (any random string — same on all your devices)</li>
+        <li>On your other devices, enter the same URL and room code</li>
+      </ol>
+      <em>Test mode expires in 30 days. To make it permanent, go to Rules tab and set:<br>
+      <code>{"rules":{".read":true,".write":true}}</code> then Publish.</em>
+    </div>
+  </div>
+</div>
+
+<!-- Sol's Board -->
+<div class="board" id="board-sol">
+  <div class="board-header" onclick="toggleBoard('sol')">
+    <h2>☀ Sol's Timer Board</h2>
+    <span class="toggle" id="toggle-sol">▼</span>
+  </div>
+  <div class="board-body" id="body-sol">
+    <div class="tabs" id="tabs-sol"></div>
+    <div class="timer-list" id="list-sol"></div>
+  </div>
+</div>
+
+<!-- Mapulhurst Board -->
+<div class="board" id="board-map">
+  <div class="board-header" onclick="toggleBoard('map')">
+    <h2>🏰 Mapulhurst — NPCs & Soldiers</h2>
+    <span class="toggle" id="toggle-map">▼</span>
+  </div>
+  <div class="board-body" id="body-map">
+    <div class="tabs" id="tabs-map"></div>
+    <div class="timer-list" id="list-map"></div>
+  </div>
+</div>
+
+<!-- Add button -->
+<button class="add-btn" onclick="openAdd()">+</button>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <h3 id="modal-title">Add Timer</h3>
+    <div class="field">
+      <label>Board</label>
+      <select id="f-board" onchange="updateTabOptions()">
+        <option value="sol">Sol's Board</option>
+        <option value="map">Mapulhurst Board</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tab</label>
+      <select id="f-tab"></select>
+    </div>
+    <div class="field">
+      <label>Name</label>
+      <input id="f-name" placeholder="e.g. Sparkle, Tokens reset">
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <select id="f-type">
+        <option value="npc">NPC / Pet</option>
+        <option value="priority">Priority Timer</option>
+        <option value="morph">Morph</option>
+        <option value="decay">Product Decay</option>
+        <option value="farm">Farming / Crop</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Role</label>
+        <input id="f-role" placeholder="pcenforcer, randomnpc...">
+      </div>
+      <div class="field">
+        <label>Location</label>
+        <input id="f-location" placeholder="Mapulhurst, Tashal...">
+      </div>
+    </div>
+    <div class="field">
+      <label>Deadline (HL time from now)</label>
+      <div class="row" style="gap:4px;align-items:center">
+        <input type="number" id="f-hl-days" placeholder="0" min="0" style="max-width:60px"><span style="font-size:11px;color:var(--text3)">d</span>
+        <input type="number" id="f-hl-hours" placeholder="0" min="0" max="23" style="max-width:55px"><span style="font-size:11px;color:var(--text3)">h</span>
+        <input type="number" id="f-hl-mins" placeholder="0" min="0" max="59" style="max-width:55px"><span style="font-size:11px;color:var(--text3)">m</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">HL</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+        <label style="font-size:11px;color:var(--text2);margin:0;display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" id="f-clear-deadline"> Clear deadline
+        </label>
+        <span id="f-hl-remaining" style="font-size:10px;color:var(--text3);margin-left:auto"></span>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Payment</label>
+        <select id="f-payment">
+          <option value="food">Food (normal)</option>
+          <option value="coin-always">Coin (always)</option>
+          <option value="coin-overdue">Coin when overdue only</option>
+          <option value="none">N/A</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Recurring (HL days)</label>
+        <input type="number" id="f-recur" placeholder="0 = one-time" min="0">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Important ★</label>
+        <select id="f-important">
+          <option value="0">No</option>
+          <option value="1">Yes</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Object ID (morphs)</label>
+        <input id="f-objid" placeholder="#65075">
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <input id="f-notes" placeholder="Optional notes">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="btn-delete" style="display:none" onclick="deleteTimer()">Delete</button>
+      <button class="btn btn-primary" onclick="saveTimer()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chain Editor Modal -->
+<div class="modal-overlay" id="chain-modal-overlay">
+  <div class="modal" id="chain-modal">
+    <h3 id="chain-modal-title">New Morph Chain</h3>
+    <div class="field">
+      <label>Chain Name</label>
+      <input id="cf-name" placeholder="e.g. Potato Pipeline">
+    </div>
+    <div class="field">
+      <label>Steps (in morph order)</label>
+      <div id="chain-steps-list"></div>
+      <button style="font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);color:var(--accent);margin-top:4px" onclick="addChainStep()">+ Add Step</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-cancel" onclick="closeChainModal()">Cancel</button>
+      <button class="btn btn-danger" id="btn-delete-chain" style="display:none" onclick="deleteChain()">Delete</button>
+      <button class="btn btn-primary" onclick="saveChain()">Save Chain</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ HL TIME ENGINE ============
+// Anchor: 26th Nuzyael 839 TR at noon = a specific RL moment
+// HL runs 4x faster than RL
+// 12 months x 30 days, year = 360 days
+const HL_MONTHS = ['Nuzyael','Peonu','Kelen','Nolus','Larane','Agrazhar','Azura','Halane','Savor','Ilvin','Navek','Morgat'];
+const HL_SEASONS = ['Spring','Spring','Spring','Summer','Summer','Summer','Fall','Fall','Fall','Winter','Winter','Winter'];
+// Anchor: 26th Nuzyael (month 0, day 25 zero-indexed) 839 TR, noon
+// We need a real-world anchor. From the timer chat the sync point was established.
+// Using: 2026-05-26T12:00:00 EDT as approximate anchor for 26th Nuzyael 839 noon.
+// Actually let me calculate from the data: tokens timer was at 2026-05-29T03:20 EDT
+// The anchor from memories: "26th Nuzyael, 839 TR at noon = RL/HL sync point"
+// I'll use a configurable anchor stored in localStorage.
+const DEFAULT_HL_ANCHOR_RL = new Date('2026-05-26T12:00:00-04:00').getTime();
+const DEFAULT_HL_ANCHOR_DAY = 25; // 0-indexed day in month (26th = index 25)
+const DEFAULT_HL_ANCHOR_MONTH = 0; // Nuzyael
+const DEFAULT_HL_ANCHOR_YEAR = 839;
+
+function getHLTime(now) {
+  const anchor = getAnchor();
+  const diffMs = now.getTime() - anchor.rl;
+  const diffRLDays = diffMs / 86400000;
+  const diffHLDays = diffRLDays * 4;
+  
+  let totalHLDay = anchor.month * 30 + anchor.day + diffHLDays;
+  let year = anchor.year;
+  
+  while (totalHLDay >= 360) { totalHLDay -= 360; year++; }
+  while (totalHLDay < 0) { totalHLDay += 360; year--; }
+  
+  const monthIdx = Math.floor(totalHLDay / 30);
+  const dayFrac = totalHLDay - monthIdx * 30;
+  const dayNum = Math.floor(dayFrac) + 1;
+  const hourFrac = (dayFrac - Math.floor(dayFrac)) * 24;
+  const hour = Math.floor(hourFrac);
+  
+  let tod;
+  if (hour < 5) tod = 'Deep Night';
+  else if (hour < 7) tod = 'Dawn';
+  else if (hour < 10) tod = 'Morning';
+  else if (hour < 12) tod = 'High Sun';
+  else if (hour < 14) tod = 'Afternoon';
+  else if (hour < 17) tod = 'Late Afternoon';
+  else if (hour < 19) tod = 'Dusk';
+  else if (hour < 21) tod = 'Evening';
+  else tod = 'Night';
+  
+  return {
+    day: dayNum,
+    month: HL_MONTHS[monthIdx],
+    monthIdx,
+    year,
+    season: HL_SEASONS[monthIdx],
+    tod,
+    hour
+  };
+}
+
+function getAnchor() {
+  try {
+    const s = localStorage.getItem('sol_hl_anchor');
+    if (s) return JSON.parse(s);
+  } catch(e){}
+  return { rl: DEFAULT_HL_ANCHOR_RL, day: DEFAULT_HL_ANCHOR_DAY, month: DEFAULT_HL_ANCHOR_MONTH, year: DEFAULT_HL_ANCHOR_YEAR };
+}
+
+function hlDateAtRL(rlDate) {
+  return getHLTime(rlDate);
+}
+
+function formatHL(hl) {
+  return `${hl.day} ${hl.month} ${hl.year} TR`;
+}
+
+// ============ DATA MANAGEMENT ============
+const SOL_TABS = [
+  {id:'priority',label:'Priority',icon:'⚡'},
+  {id:'pets',label:'Pets',icon:'🐾'},
+  {id:'shopkeeps',label:'Shopkeeps',icon:'🏪'},
+  {id:'orphanage',label:'Orphanage',icon:'🏠'},
+  {id:'family',label:'Family',icon:'👨‍👩‍👧'},
+  {id:'morphs',label:'Morphs',icon:'🔄'},
+  {id:'farming',label:'Farming',icon:'🌾'},
+  {id:'pantry',label:'Pantry',icon:'🏺'},
+];
+const MAP_TABS = [
+  {id:'overdue',label:'Overdue',icon:'⚠'},
+  {id:'named',label:'Named/Animals',icon:'🐕'},
+  {id:'greathall',label:'Great Hall',icon:'👑'},
+  {id:'yard',label:'Yard',icon:'⚔'},
+  {id:'market',label:'Market',icon:'🛒'},
+  {id:'workroom',label:'Workroom',icon:'🔨'},
+];
+
+let solTab = 'priority';
+let mapTab = 'overdue';
+let editingId = null;
+let pantryFilter = 'all';
+
+function getTimers() {
+  try {
+    const s = localStorage.getItem('sol_timers');
+    if (s) return JSON.parse(s);
+  } catch(e){}
+  return null;
+}
+
+function saveTimers(timers) {
+  localStorage.setItem('sol_timers', JSON.stringify(timers));
+}
+
+function defaultTimers() {
+  const t = [];
+  let id = 1;
+  const mk = (board, tab, name, opts={}) => {
+    t.push({
+      id: 't'+(id++),
+      board, tab, name,
+      type: opts.type||'npc',
+      role: opts.role||'',
+      location: opts.location||'',
+      deadline: opts.deadline||null,
+      payment: opts.payment||'food',
+      recur: opts.recur||0,
+      important: opts.important||false,
+      objId: opts.objId||'',
+      notes: opts.notes||'',
+    });
+  };
+  // Sol's Board - Priority
+  mk('sol','priority','Tokens reset',{type:'priority',location:'Mapulhurst & Tashal',payment:'none',recur:30,notes:'30 HL days = 7d 12h RL'});
+  mk('sol','priority','Silver payment',{type:'priority',location:'Mapulhurst',payment:'none',recur:21,notes:'21 HL days; 20 silvers from grizzled man'});
+  // Pets
+  mk('sol','pets','Sparkle',{role:'pet',location:'',payment:'food'});
+  mk('sol','pets','Vampire',{role:'pet',location:'',payment:'food'});
+  mk('sol','pets','Rio',{role:'pet',location:'',payment:'food'});
+  mk('sol','pets','Thalmik',{role:'pet',location:'',payment:'food'});
+  mk('sol','pets','Peggy',{role:'pet',location:'',payment:'food'});
+  mk('sol','pets','Velvet',{role:'pet',location:'',payment:'food'});
+  // Shopkeeps
+  mk('sol','shopkeeps','Sonnet',{role:'shopkeep',payment:'coin-always',notes:'Always coin'});
+  mk('sol','shopkeeps','Azra',{role:'shopkeep',payment:'coin-always',notes:'Always coin; aroma stall'});
+  mk('sol','shopkeeps','Valerius',{role:'shopkeep',payment:'coin-always',notes:'Always coin; Rosy Path'});
+  mk('sol','shopkeeps','Hodor',{role:'shopkeep',payment:'food',notes:'Needs container + hood/mask'});
+  // Orphanage
+  mk('sol','orphanage','Megela',{role:'orphanage',payment:'food'});
+  mk('sol','orphanage','Chura',{role:'orphanage',payment:'food'});
+  mk('sol','orphanage','Valetta',{role:'orphanage',payment:'food',notes:'Needs belt'});
+  mk('sol','orphanage','Yorik',{role:'orphanage',payment:'food'});
+  // Family
+  mk('sol','family','Amante',{role:'family',payment:'food',notes:'Mother'});
+  mk('sol','family','Quint',{role:'family',payment:'food',notes:'Father'});
+  // Morphs
+  mk('sol','morphs','Buzzing colony of bees',{type:'morph',location:'Mapulhurst',objId:'#65075',payment:'none'});
+  mk('sol','morphs','Bushel of moldy grain',{type:'morph',location:'Mapulhurst',objId:'#2823',payment:'none'});
+  mk('sol','morphs','Mottled goat buck',{type:'morph',location:'Mapulhurst',objId:'#11450',payment:'none'});
+
+  // Farming — active crop timers (set deadline when planted)
+  mk('sol','farming','Onions',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Peonu only | 10 prod | 28d seed cost | Grow: 26d HL (~6.5 RL d) | Yield: 190 | Plant first in Peonu'});
+  mk('sol','farming','Potatoes',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Peonu only | 10 prod | 10d seed cost | Grow: 23d HL (~5.75 RL d) | Yield: 190 | 7.5d harvest window'});
+  mk('sol','farming','Beetroots',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Peonu + Halane | 10 prod | 0d seed | Grow: 22d HL (~5.5 RL d) | Yield: 190 | 15d harvest window'});
+  mk('sol','farming','Carrots',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Peonu only | 10 prod | Seeds self-refund | Grow: 11d HL (~2.75 RL d) | Yield: 180 | ⚠ 5d window — tightest! Plant LAST'});
+  mk('sol','farming','Turnips',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Peonu only | 10 prod | Grow: 15d HL (~3.75 RL d) | Yield: 170'});
+  mk('sol','farming','Peas',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Peonu or Nolus | 10 prod | Grow: ~20d HL | Yield: 170 pods → 204 peas via open pea-pod'});
+  mk('sol','farming','Leeks',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Nuzyael or Savor | 10 prod | 9d seed cost | Grow: ~26d HL (~6.5 RL d) | Yield: 190'});
+  mk('sol','farming','Herbs',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Plant: Spring+Summer | 1 prod only! | 10d HL grow | Seeds self-sustain | Uses grassy yards not tilled rows'});
+  mk('sol','farming','Honey (tend bees)',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Tend: Spring | 0 prod, 1d materials | Grow: 37.5d HL (~9.4 RL d) → harvestable colony'});
+  mk('sol','farming','Honey (harvest)',{type:'farm',location:'Mapulhurst',payment:'none',notes:'Harvest: Summer/Autumn | 1 prod | → 3 combs (10.50d) | Colony dies if not tended next Spring!'});
+
+  // Mapulhurst - Named/animals
+  mk('map','named','Chelen',{role:'pcenforcer',location:'Mapulhurst',payment:'coin-always',important:true,notes:'Always coin; starred'});
+  mk('map','named','Courage',{role:'animal',location:'Mapulhurst',payment:'food'});
+  mk('map','named','Justice',{role:'animal',location:'Mapulhurst',payment:'food'});
+  mk('map','named','Loyalty',{role:'animal',location:'Mapulhurst',payment:'food'});
+  mk('map','named','Honor',{role:'animal',location:'Mapulhurst',payment:'food',notes:'Large black mastiff'});
+  mk('map','named','Humility',{role:'animal',location:'Mapulhurst',payment:'food',notes:'Myrele\'s guard dog — do NOT take'});
+  mk('map','named','Patience',{role:'animal',location:'Mapulhurst',payment:'food',notes:'Myrele\'s guard dog — do NOT take'});
+  mk('map','named','Aten',{role:'named',location:'Mapulhurst',payment:'food'});
+  mk('map','named','Eline',{role:'named',location:'Mapulhurst',payment:'food'});
+  mk('map','named','Iseult',{role:'named',location:'Mapulhurst',payment:'food'});
+  // Great Hall
+  mk('map','greathall','Swindon',{role:'pcenforcer',location:'Great Hall',payment:'food'});
+  mk('map','greathall','Taro',{role:'pcenforcer',location:'Great Hall',payment:'food'});
+  mk('map','greathall','Hindal',{role:'randomnpc',location:'Great Hall',payment:'food'});
+  mk('map','greathall','Selby (grizzled)',{role:'randomnpc',location:'Great Hall',payment:'food',notes:'Grizzled man'});
+  mk('map','greathall','Gorin',{role:'randomnpc',location:'Great Hall',payment:'food'});
+  mk('map','greathall','Ornulf',{role:'randomnpc',location:'Great Hall',payment:'food'});
+  // Yard
+  mk('map','yard','Krinel',{role:'pcenforcer',location:'Yard',payment:'food',notes:'Special: coin when overdue, food normally'});
+  mk('map','yard','Jukel',{role:'pcenforcer',location:'Yard',payment:'food'});
+  mk('map','yard','Elgar',{role:'pcenforcer',location:'Yard',payment:'food'});
+  mk('map','yard','Oswyn',{role:'pcenforcer',location:'Yard',payment:'food'});
+  mk('map','yard','Farren',{role:'randomnpc',location:'Yard',payment:'food'});
+  mk('map','yard','Chamel',{role:'randomnpc',location:'Yard',payment:'food'});
+  mk('map','yard','Jellan',{role:'randomnpc',location:'Yard',payment:'food'});
+  mk('map','yard','Korin',{role:'randomnpc',location:'Yard',payment:'food'});
+  mk('map','yard','Novin',{role:'pcenforcer',location:'Yard',payment:'food',important:true,notes:'Starred'});
+  mk('map','yard','Meric',{role:'randomnpc',location:'Yard',payment:'food'});
+  mk('map','yard','Orest',{role:'pcenforcer',location:'Yard',payment:'food',important:true,notes:'Starred'});
+  // Market
+  mk('map','market','Merina',{role:'randomnpc',location:'Market',payment:'food'});
+  mk('map','market','Brangen',{role:'randomnpc',location:'Market',payment:'food'});
+  mk('map','market','Ordil',{role:'randomnpc',location:'Market',payment:'food'});
+  mk('map','market','Havrin',{role:'randomnpc',location:'Market',payment:'food'});
+  mk('map','market','Vadir',{role:'pcenforcer',location:'Market',payment:'food'});
+  // Workroom
+  mk('map','workroom','Eron',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Melton',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Jonal',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Dagmar',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Heidrun',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Erna',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Selby (buxom)',{role:'randomnpc',location:'Workroom',payment:'food',notes:'Buxom woman'});
+  mk('map','workroom','Serenya',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Droven',{role:'randomnpc',location:'Workroom',payment:'food'});
+  mk('map','workroom','Althas',{role:'Aislinn child',location:'Workroom',payment:'food'});
+  mk('map','workroom','Kaeldric',{role:'randomchild',location:'Workroom',payment:'food'});
+  mk('map','workroom','Erydnis',{role:'randomchild',location:'Workroom',payment:'food'});
+  mk('map','workroom','Jorveth',{role:'randomchild',location:'Workroom',payment:'food'});
+  mk('map','workroom','Velianne',{role:'randomchild',location:'Workroom',payment:'food'});
+  mk('map','workroom','Nerisa',{role:'randomchild',location:'Workroom',payment:'food'});
+  return t;
+}
+
+let timers = getTimers() || defaultTimers();
+if (!getTimers()) saveTimers(timers);
+
+// ============ MORPH CHAIN SYSTEM ============
+// 1 HL day = 6 RL hours = 21600000 ms; 1 HL hour = 15 RL minutes = 900000 ms
+function hlToRLMs(hlDays, hlHours) {
+  return hlDays * 21600000 + (hlHours || 0) * 900000;
+}
+function rlMsToHL(ms) {
+  // 1 HL minute = 15 RL seconds = 15000 ms
+  const totalHLMins = Math.floor(ms / 15000);
+  const d = Math.floor(totalHLMins / (24 * 60));
+  const h = Math.floor((totalHLMins % (24 * 60)) / 60);
+  const m = totalHLMins % 60;
+  return { d, h, m };
+}
+function hlDurationLabel(hlDays, hlHours) {
+  let s = hlDays + 'd';
+  if (hlHours) s += ' ' + hlHours + 'h';
+  const rlH = (hlDays * 6) + (hlHours || 0) * 0.25;
+  const rlD = Math.floor(rlH / 24);
+  const rlHr = Math.round(rlH % 24);
+  s += ' HL (~' + (rlD > 0 ? rlD + 'd ' : '') + rlHr + 'h RL)';
+  return s;
+}
+
+function getChains() {
+  try {
+    const s = localStorage.getItem('sol_chains');
+    if (s) return JSON.parse(s);
+  } catch(e){}
+  return null;
+}
+function saveChainStore(chains) {
+  localStorage.setItem('sol_chains', JSON.stringify(chains));
+}
+
+function defaultChains() {
+  return [
+    {
+      id: 'ch1', name: 'Potato Pipeline',
+      steps: [
+        {name:'Soil mounds',objId:'#2437',hlDays:3,hlHours:0,morphsTo:'Small green shoots'},
+        {name:'Small green shoots',objId:'#2438',hlDays:9,hlHours:12,morphsTo:'Tall broad-leaved plants'},
+        {name:'Tall broad-leaved plants',objId:'#2439',hlDays:10,hlHours:12,morphsTo:'Harvestable potato plants'},
+        {name:'Harvestable potato plants',objId:'#2440',hlDays:7,hlHours:12,morphsTo:'Wilting plants — HARVEST!'},
+      ]
+    },
+    {
+      id: 'ch2', name: 'Onion Pipeline',
+      steps: [
+        {name:'Mounded row of dirt',objId:'#2427',hlDays:3,hlHours:18,morphsTo:'Green stems'},
+        {name:'Green stems',objId:'#2428',hlDays:22,hlHours:12,morphsTo:'Harvest ready onions'},
+        {name:'Harvest ready onions',objId:'#2429',hlDays:7,hlHours:12,morphsTo:'Wilting — HARVEST!'},
+      ]
+    },
+    {
+      id: 'ch3', name: 'Beekeeping Cycle',
+      steps: [
+        {name:'Mildly buzzing colony',objId:'#65074',hlDays:37,hlHours:12,morphsTo:'Buzzing well-populated colony'},
+        {name:'Buzzing well-populated colony',objId:'#65075',hlDays:0,hlHours:0,morphsTo:'HARVEST ACTION → angrily buzzing'},
+        {name:'Angrily buzzing colony',objId:'#65076',hlDays:2,hlHours:0,morphsTo:'Quiet dormant colony'},
+      ]
+    },
+  ];
+}
+
+let chains = getChains() || defaultChains();
+if (!getChains()) saveChainStore(chains);
+
+// Chain editor state
+let editingChainId = null;
+let chainEditorSteps = [];
+
+function startChain(chainId, location) {
+  const chain = chains.find(c => c.id === chainId);
+  if (!chain || chain.steps.length === 0) return;
+  const loc = location || prompt('Location for this chain (e.g. Mapulhurst):');
+  if (loc === null) return;
+  const step = chain.steps[0];
+  const rlMs = hlToRLMs(step.hlDays, step.hlHours);
+  const deadline = rlMs > 0 ? new Date(Date.now() + rlMs).toISOString() : null;
+  timers.push({
+    id: 't' + Date.now(),
+    board: 'sol', tab: 'morphs',
+    name: chain.name + ' — ' + step.name,
+    type: 'chain',
+    chainId: chain.id,
+    chainStep: 0,
+    role: '', location: loc || '',
+    deadline,
+    payment: 'none', recur: 0,
+    important: false,
+    objId: step.objId || '',
+    notes: 'Step 1/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours),
+  });
+  saveTimers(timers);
+  solTab = 'morphs';
+  render();
+}
+
+function advanceChain(timerId) {
+  // Manual advance — used for 0-duration "action required" steps and final step
+  const t = timers.find(x => x.id === timerId);
+  if (!t || t.type !== 'chain') return;
+  const chain = chains.find(c => c.id === t.chainId);
+  if (!chain) { alert('Chain template not found — was it deleted?'); return; }
+  const nextIdx = (t.chainStep || 0) + 1;
+  if (nextIdx >= chain.steps.length) {
+    if (confirm(chain.name + ' complete! Remove this timer?')) {
+      timers = timers.filter(x => x.id !== timerId);
+      saveTimers(timers);
+      render();
+    }
+    return;
+  }
+  const step = chain.steps[nextIdx];
+  const rlMs = hlToRLMs(step.hlDays, step.hlHours);
+  const deadline = rlMs > 0 ? new Date(Date.now() + rlMs).toISOString() : null;
+  t.chainStep = nextIdx;
+  t.name = chain.name + ' — ' + step.name;
+  t.objId = step.objId || '';
+  t.deadline = deadline;
+  t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours);
+  saveTimers(timers);
+  render();
+}
+
+// Auto-advance: runs every tick, silently advances timed chain steps when they fire
+function autoAdvanceChains() {
+  let changed = false;
+  timers.forEach(t => {
+    if (t.type !== 'chain' || !t.deadline) return;
+    const chain = chains.find(c => c.id === t.chainId);
+    if (!chain) return;
+    // Loop to cascade through multiple elapsed steps (e.g. user was away)
+    let safety = 0;
+    while (safety++ < 20) {
+      if (!t.deadline || new Date(t.deadline) > new Date()) break;
+      const nextIdx = (t.chainStep || 0) + 1;
+      if (nextIdx >= chain.steps.length) break; // last step — don't auto-remove, user dismisses
+      const step = chain.steps[nextIdx];
+      const rlMs = hlToRLMs(step.hlDays, step.hlHours);
+      // If next step is 0-duration (manual action), advance to it but leave deadline null
+      const deadline = rlMs > 0 ? new Date(Date.now() + rlMs).toISOString() : null;
+      t.chainStep = nextIdx;
+      t.name = chain.name + ' — ' + step.name;
+      t.objId = step.objId || '';
+      t.deadline = deadline;
+      t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours);
+      changed = true;
+      if (!deadline) break; // manual step — stop cascading
+    }
+  });
+  if (changed) saveTimers(timers);
+}
+
+function renderChainProgress(t) {
+  const chain = chains.find(c => c.id === t.chainId);
+  if (!chain) return '';
+  const curStep = t.chainStep || 0;
+  let h = '<div class="chain-progress">';
+  chain.steps.forEach((s, i) => {
+    if (i > 0) h += `<span class="chain-line${i <= curStep ? ' done' : ''}"></span>`;
+    const cls = i < curStep ? 'done' : i === curStep ? 'current' : 'future';
+    h += `<span class="chain-dot ${cls}" title="${s.name}"></span>`;
+  });
+  h += `<span class="chain-step-label">${curStep+1}/${chain.steps.length}</span>`;
+  h += '</div>';
+  return h;
+}
+
+function renderChainLibrary() {
+  let h = '<div class="chain-lib">';
+  h += '<div class="chain-lib-header"><span>🔗 Morph Chain Templates</span>';
+  h += '<button style="font-size:11px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);color:var(--accent)" onclick="openChainEditor()">+ New Chain</button></div>';
+  if (chains.length === 0) {
+    h += '<div class="empty">No chains defined. Tap + to create one.</div>';
+  } else {
+    chains.forEach(c => {
+      h += `<div class="chain-card"><div class="chain-card-top">`;
+      h += `<span class="chain-card-name">${c.name}</span>`;
+      h += `<div class="chain-card-actions">`;
+      h += `<button class="start-btn" onclick="startChain('${c.id}')">▶ Start</button>`;
+      h += `<button onclick="openChainEditor('${c.id}')">Edit</button>`;
+      h += `</div></div>`;
+      h += `<div class="chain-card-steps">`;
+      c.steps.forEach((s, i) => {
+        if (i > 0) h += ' <span class="arrow">→</span> ';
+        h += `<span class="chain-card-step">${s.name}`;
+        if (s.hlDays > 0 || s.hlHours > 0) h += ` <span style="color:var(--text3)">(${s.hlDays}d${s.hlHours ? s.hlHours+'h':''})</span>`;
+        h += '</span>';
+      });
+      h += '</div></div>';
+    });
+  }
+  h += '</div>';
+  return h;
+}
+
+// Chain editor
+function openChainEditor(id) {
+  if (id) {
+    const c = chains.find(x => x.id === id);
+    if (!c) return;
+    editingChainId = id;
+    document.getElementById('chain-modal-title').textContent = 'Edit: ' + c.name;
+    document.getElementById('btn-delete-chain').style.display = '';
+    document.getElementById('cf-name').value = c.name;
+    chainEditorSteps = c.steps.map(s => ({...s}));
+  } else {
+    editingChainId = null;
+    document.getElementById('chain-modal-title').textContent = 'New Morph Chain';
+    document.getElementById('btn-delete-chain').style.display = 'none';
+    document.getElementById('cf-name').value = '';
+    chainEditorSteps = [{name:'',objId:'',hlDays:0,hlHours:0,morphsTo:''}];
+  }
+  renderChainSteps();
+  document.getElementById('chain-modal-overlay').classList.add('show');
+}
+function closeChainModal() {
+  document.getElementById('chain-modal-overlay').classList.remove('show');
+  editingChainId = null;
+}
+function addChainStep() {
+  chainEditorSteps.push({name:'',objId:'',hlDays:0,hlHours:0,morphsTo:''});
+  renderChainSteps();
+}
+function removeChainStep(i) {
+  chainEditorSteps.splice(i, 1);
+  renderChainSteps();
+}
+function updateChainStep(i, field, val) {
+  chainEditorSteps[i][field] = field === 'hlDays' || field === 'hlHours' ? parseInt(val)||0 : val;
+}
+function renderChainSteps() {
+  const el = document.getElementById('chain-steps-list');
+  el.innerHTML = chainEditorSteps.map((s, i) => `
+    <div class="chain-step-row">
+      <span class="step-num">${i+1}.</span>
+      <input placeholder="Name" value="${s.name}" oninput="updateChainStep(${i},'name',this.value)" style="flex:2">
+      <input placeholder="#ID" value="${s.objId}" oninput="updateChainStep(${i},'objId',this.value)" style="flex:1;max-width:70px">
+      <input type="number" placeholder="d" value="${s.hlDays||''}" oninput="updateChainStep(${i},'hlDays',this.value)" style="flex:0;max-width:40px" min="0" title="HL days">
+      <input type="number" placeholder="h" value="${s.hlHours||''}" oninput="updateChainStep(${i},'hlHours',this.value)" style="flex:0;max-width:40px" min="0" title="HL hours">
+      <input placeholder="→ morphs to" value="${s.morphsTo}" oninput="updateChainStep(${i},'morphsTo',this.value)" style="flex:2">
+      <button class="remove-step" onclick="removeChainStep(${i})">✕</button>
+    </div>
+  `).join('');
+}
+function saveChain() {
+  const name = document.getElementById('cf-name').value.trim();
+  if (!name) { alert('Chain name is required'); return; }
+  const steps = chainEditorSteps.filter(s => s.name.trim());
+  if (steps.length < 2) { alert('A chain needs at least 2 steps'); return; }
+  if (editingChainId) {
+    const c = chains.find(x => x.id === editingChainId);
+    if (c) { c.name = name; c.steps = steps; }
+  } else {
+    chains.push({ id: 'ch' + Date.now(), name, steps });
+  }
+  saveChainStore(chains);
+  closeChainModal();
+  render();
+}
+function deleteChain() {
+  if (!editingChainId) return;
+  if (!confirm('Delete this chain template? Active chain timers will keep working but can no longer advance.')) return;
+  chains = chains.filter(c => c.id !== editingChainId);
+  saveChainStore(chains);
+  closeChainModal();
+  render();
+}
+
+// ============ CLOUD SYNC ============
+const DEVICE_ID = localStorage.getItem('sol_device_id') || (() => {
+  const id = 'dev_' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('sol_device_id', id);
+  return id;
+})();
+let lastSyncTime = 0;
+let pushTimer = null;
+let syncBusy = false;
+
+function getSyncConfig() {
+  try {
+    const s = localStorage.getItem('sol_sync_config');
+    if (s) return JSON.parse(s);
+  } catch(e){}
+  return { url: 'https://harshlands-bdc25-default-rtdb.firebaseio.com', room: 'hl-timers' };
+}
+
+function saveSyncConfig() {
+  const config = {
+    url: (document.getElementById('sync-url').value || '').trim().replace(/\/+$/, ''),
+    room: (document.getElementById('sync-room').value || '').trim()
+  };
+  localStorage.setItem('sol_sync_config', JSON.stringify(config));
+  updateSyncStatus();
+  if (config.url && config.room) syncNow();
+}
+
+function loadSyncConfig() {
+  const config = getSyncConfig();
+  document.getElementById('sync-url').value = config.url || '';
+  document.getElementById('sync-room').value = config.room || '';
+  updateSyncStatus();
+}
+
+function isSyncConfigured() {
+  const c = getSyncConfig();
+  return c.url && c.room;
+}
+
+function updateSyncStatus(status, cls) {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-status');
+  if (status) {
+    dot.className = 'sync-dot ' + cls;
+    label.textContent = status;
+    return;
+  }
+  if (!isSyncConfigured()) {
+    dot.className = 'sync-dot off';
+    label.textContent = 'Cloud sync not configured';
+  }
+}
+
+async function pushToCloud() {
+  if (!isSyncConfigured() || syncBusy) return;
+  const config = getSyncConfig();
+  syncBusy = true;
+  updateSyncStatus('Pushing...', 'busy');
+  try {
+    const data = { timers, chains, updated: Date.now(), device: DEVICE_ID };
+    const res = await fetch(`${config.url}/sol/${encodeURIComponent(config.room)}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    lastSyncTime = data.updated;
+    updateSyncStatus('Synced ' + new Date().toLocaleTimeString(), 'ok');
+  } catch(e) {
+    console.error('Push failed:', e);
+    updateSyncStatus('Push failed: ' + e.message, 'err');
+  }
+  syncBusy = false;
+}
+
+async function pullFromCloud() {
+  if (!isSyncConfigured() || syncBusy) return;
+  const config = getSyncConfig();
+  syncBusy = true;
+  try {
+    const res = await fetch(`${config.url}/sol/${encodeURIComponent(config.room)}.json`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data && data.updated && data.updated > lastSyncTime && data.device !== DEVICE_ID) {
+      // Cloud data is newer and from another device — adopt it
+      if (data.timers && Array.isArray(data.timers)) {
+        timers = data.timers;
+        localStorage.setItem('sol_timers', JSON.stringify(timers));
+      }
+      if (data.chains && Array.isArray(data.chains)) {
+        chains = data.chains;
+        localStorage.setItem('sol_chains', JSON.stringify(chains));
+      }
+      lastSyncTime = data.updated;
+      updateSyncStatus('Synced ' + new Date().toLocaleTimeString(), 'ok');
+      render();
+    } else if (data && data.updated) {
+      lastSyncTime = Math.max(lastSyncTime, data.updated);
+      updateSyncStatus('Synced ' + new Date().toLocaleTimeString(), 'ok');
+    }
+  } catch(e) {
+    console.error('Pull failed:', e);
+    updateSyncStatus('Sync error: ' + e.message, 'err');
+  }
+  syncBusy = false;
+}
+
+function debouncedPush() {
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushToCloud, 800);
+}
+
+async function syncNow() {
+  if (!isSyncConfigured()) {
+    document.getElementById('sync-body').classList.remove('hidden');
+    return;
+  }
+  await pullFromCloud();
+  await pushToCloud();
+}
+
+// Override save functions to trigger cloud push
+const _origSaveTimers = saveTimers;
+saveTimers = function(data) {
+  localStorage.setItem('sol_timers', JSON.stringify(data));
+  debouncedPush();
+};
+const _origSaveChainStore = saveChainStore;
+saveChainStore = function(data) {
+  localStorage.setItem('sol_chains', JSON.stringify(data));
+  debouncedPush();
+};
+
+// Sync polling — every 30 seconds
+setInterval(pullFromCloud, 30000);
+
+// ============ RENDERING ============
+function isOverdue(t) {
+  if (!t.deadline) return false;
+  return new Date(t.deadline) <= new Date();
+}
+
+function getStatus(t) {
+  if (!t.deadline) return 'unset';
+  const diff = new Date(t.deadline) - new Date();
+  if (diff <= 0) return 'overdue';
+  if (diff < 86400000) return 'urgent'; // < 1 day
+  return 'ok';
+}
+
+function countdown(deadline) {
+  if (!deadline) return '<span style="color:var(--text3)">not set</span>';
+  const diff = new Date(deadline) - new Date();
+  if (diff <= 0) {
+    const abs = Math.abs(diff);
+    const d = Math.floor(abs/86400000);
+    const h = Math.floor((abs%86400000)/3600000);
+    const m = Math.floor((abs%3600000)/60000);
+    return `OVERDUE ${d}d ${h}h ${m}m`;
+  }
+  const d = Math.floor(diff/86400000);
+  const h = Math.floor((diff%86400000)/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  const s = Math.floor((diff%60000)/1000);
+  return `${d}d ${h}h ${m}m ${s}s`;
+}
+
+function paymentTag(t) {
+  // Payment display logic respecting the rules
+  if (t.payment === 'none') return '';
+  if (t.payment === 'coin-always') return '<span class="tag tag-coin">COIN</span>';
+  if (t.payment === 'coin-overdue') {
+    if (isOverdue(t)) return '<span class="tag tag-coin">COIN</span>';
+    return '<span class="tag tag-food">FOOD</span>';
+  }
+  // Special Krinel logic: food normally, coin when overdue
+  if (t.name === 'Krinel') {
+    if (isOverdue(t)) return '<span class="tag tag-coin">COIN</span>';
+    return '<span class="tag tag-food">FOOD</span>';
+  }
+  // pcenforcer / randomnpc: food normally, coin when overdue
+  if (['pcenforcer','randomnpc','randomchild','Aislinn child'].includes(t.role)) {
+    if (isOverdue(t)) return '<span class="tag tag-coin">COIN</span>';
+    return '<span class="tag tag-food">FOOD</span>';
+  }
+  if (t.payment === 'food') return '<span class="tag tag-food">FOOD</span>';
+  return '';
+}
+
+function renderRow(t) {
+  const status = getStatus(t);
+  const cd = countdown(t.deadline);
+  const hl = t.deadline ? hlDateAtRL(new Date(t.deadline)) : null;
+  const starHTML = t.important ? '<span class="star">★</span>' : '';
+  const recurHTML = t.recur > 0 ? `<span class="tag tag-recur">↻ ${t.recur} HL d</span>` : '';
+  const morphHTML = t.type === 'morph' && t.objId ? `<span class="tag tag-morph">${t.objId}</span>` : '';
+  const farmHTML = t.type === 'farm' ? '<span class="tag tag-farm">CROP</span>' : '';
+  const decayHTML = t.type === 'decay' ? '<span class="tag tag-decay">DECAY</span>' : '';
+  const chainHTML = t.type === 'chain' ? '<span class="tag tag-chain">CHAIN</span>' : '';
+  const chainObjHTML = t.type === 'chain' && t.objId ? `<span class="tag tag-morph">${t.objId}</span>` : '';
+  const roleHTML = t.role ? `<span class="tag tag-role">${t.role}</span>` : '';
+  const hlHTML = hl ? `<span class="hl-date">${formatHL(hl)} · ${hl.tod}</span>` : '';
+  const dateStr = t.deadline ? new Date(t.deadline).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}) : '';
+  const progressHTML = t.type === 'chain' ? renderChainProgress(t) : '';
+  // Advance button: show for manual-action steps (0-duration, unset deadline) or final overdue step
+  let advanceBtn = '';
+  if (t.type === 'chain') {
+    const chain = chains.find(c => c.id === t.chainId);
+    if (chain) {
+      const curStep = t.chainStep || 0;
+      const isLastStep = curStep >= chain.steps.length - 1;
+      const isManualStep = !t.deadline; // 0-duration step waiting for player action
+      if (isManualStep) {
+        advanceBtn = `<button onclick="advanceChain('${t.id}')" style="border-color:var(--accent);color:var(--accent)">Done ✓</button>`;
+      } else if (isLastStep && status === 'overdue') {
+        advanceBtn = `<button onclick="advanceChain('${t.id}')" style="border-color:var(--green);color:var(--green)">Complete ✓</button>`;
+      }
+    }
+  }
+
+  return `<div class="timer-row ${status}" data-id="${t.id}">
+    <div class="timer-top">
+      <div class="timer-name">${starHTML}${t.name}</div>
+      <div class="timer-countdown ${status}">${cd}</div>
+    </div>
+    ${progressHTML}
+    <div class="timer-meta">
+      ${paymentTag(t)}${roleHTML}${recurHTML}${morphHTML}${farmHTML}${decayHTML}${chainHTML}${chainObjHTML}
+      ${t.location ? `<span class="tag tag-loc">${t.location}</span>` : ''}
+      ${t.notes ? `<span style="color:var(--text3);font-style:italic">${t.notes}</span>` : ''}
+    </div>
+    <div class="timer-meta">
+      <span class="timer-date">${dateStr}</span>
+      ${hlHTML}
+      <div class="timer-actions">
+        ${advanceBtn}
+        <button onclick="resetTimer('${t.id}')">Reset</button>
+        <button onclick="openEdit('${t.id}')">Edit</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function getTabTimers(board, tab) {
+  if (board === 'map' && tab === 'overdue') {
+    return timers.filter(t => t.board === 'map' && t.tab !== 'overdue' && isOverdue(t))
+      .sort((a,b) => new Date(a.deadline) - new Date(b.deadline));
+  }
+  let items = timers.filter(t => t.board === board && t.tab === tab);
+  // Apply pantry location filter
+  if (board === 'sol' && tab === 'pantry' && pantryFilter !== 'all') {
+    items = items.filter(t => t.location === pantryFilter);
+  }
+  return items.sort((a,b) => {
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    });
+}
+
+function renderBoard(board) {
+  const tabs = board === 'sol' ? SOL_TABS : MAP_TABS;
+  const curTab = board === 'sol' ? solTab : mapTab;
+  const tabsEl = document.getElementById('tabs-'+board);
+  const listEl = document.getElementById('list-'+board);
+  
+  // Count overdue for map
+  const odCount = board === 'map' ? timers.filter(t => t.board==='map' && t.tab!=='overdue' && isOverdue(t)).length : 0;
+  
+  tabsEl.innerHTML = tabs.map(tb => {
+    const active = tb.id === curTab ? ' active' : '';
+    const badge = tb.id === 'overdue' && odCount > 0 ? `<span class="badge">${odCount}</span>` : '';
+    return `<button class="tab${active}" onclick="switchTab('${board}','${tb.id}')">${tb.icon} ${tb.label}${badge}</button>`;
+  }).join('');
+  
+  let html = '';
+  // Farming calendar reference
+  if (board === 'sol' && curTab === 'farming') {
+    html += renderFarmCalendar();
+  }
+  // Pantry location filter
+  if (board === 'sol' && curTab === 'pantry') {
+    html += renderPantryFilter();
+  }
+  // Chain library on Morphs tab
+  if (board === 'sol' && curTab === 'morphs') {
+    html += renderChainLibrary();
+  }
+  
+  const items = getTabTimers(board, curTab);
+  if (items.length === 0) {
+    if (board === 'sol' && curTab === 'pantry') {
+      html += '<div class="empty">No items tracked yet. Tap + to add food or ingredients with decay timers.</div>';
+    } else {
+      html += '<div class="empty">No timers in this tab</div>';
+    }
+  } else {
+    html += items.map(renderRow).join('');
+  }
+  listEl.innerHTML = html;
+}
+
+let farmCalCollapsed = false;
+function toggleFarmCal() {
+  farmCalCollapsed = !farmCalCollapsed;
+  render();
+}
+
+function renderFarmCalendar() {
+  const hl = getHLTime(new Date());
+  const curMonth = hl.monthIdx;
+  const months = [
+    {name:'Nuzyael',season:'Spring',acts:'<span class="plant">🌱 Plant leeks</span><br><span class="tend">🐝 Tend bees</span><br><span class="plant">🌿 Herbs begin</span>'},
+    {name:'Peonu',season:'Spring',acts:'<span class="plant">🌱 Onions → Potatoes → Beetroots → Carrots</span><br><span class="plant">🌿 Herbs</span><br><span class="harvest">⚠ CRITICAL MONTH</span>'},
+    {name:'Kelen',season:'Spring',acts:'<span class="harvest">🌾 Harvest all Peonu crops</span><br><span class="harvest">🥕 Carrots first!</span><br><span class="plant">🌿 Herbs</span>'},
+    {name:'Nolus',season:'Summer',acts:'<span class="plant">🌱 Plant peas</span><br><span class="plant">🌿 Herbs</span>'},
+    {name:'Larane',season:'Summer',acts:'<span class="harvest">🍑 Peaches</span><br><span class="harvest">🍎 Apples begin</span><br><span class="harvest">🍯 Honey harvest</span>'},
+    {name:'Agrazhar',season:'Summer',acts:'<span class="harvest">🍑 Peaches</span><br><span class="harvest">🍎 Apples</span><br><span class="harvest">🍯 Honey harvest</span>'},
+    {name:'Azura',season:'Fall',acts:'<span class="harvest">🍑 Peaches end</span><br><span class="harvest">🍎 Apples</span><br><span class="harvest">🍯 Honey harvest</span>'},
+    {name:'Halane',season:'Fall',acts:'<span class="harvest">🍎 Apples end</span><br><span class="plant">🌱 Beetroots 2nd</span><br><span class="harvest">🌾 Peas</span>'},
+    {name:'Savor',season:'Fall',acts:'<span class="plant">🌱 Plant leeks 2nd</span><br><span class="harvest">🌾 Beetroots 2nd harvest</span>'},
+    {name:'Ilvin',season:'Winter',acts:'<span class="harvest">🌾 Harvest leeks (Savor)</span>'},
+    {name:'Navek',season:'Winter',acts:'<span class="quiet">❄ Winter quiet</span>'},
+    {name:'Morgat',season:'Winter',acts:'<span class="quiet">❄ Winter quiet</span>'},
+  ];
+  const arrow = farmCalCollapsed ? '▶' : '▼';
+  const gridClass = farmCalCollapsed ? ' hidden' : '';
+  let h = `<div class="farm-cal">
+    <div class="farm-cal-title" onclick="toggleFarmCal()">
+      <span>Yearly Planting & Harvest Calendar</span>
+      <span>${arrow}</span>
+    </div>
+    <div class="farm-cal-grid${gridClass}">`;
+  months.forEach((m,i) => {
+    const cur = i === curMonth ? ' current' : '';
+    h += `<div class="farm-month${cur}">
+      <div class="mo-name">${i === curMonth ? '▸ ' : ''}${m.name}</div>
+      <div class="mo-season">${m.season}</div>
+      <div class="mo-act">${m.acts}</div>
+    </div>`;
+  });
+  h += '</div></div>';
+  return h;
+}
+
+function renderPantryFilter() {
+  const pantryItems = timers.filter(t => t.board === 'sol' && t.tab === 'pantry');
+  const locs = [...new Set(pantryItems.map(t => t.location).filter(Boolean))].sort();
+  if (locs.length === 0) return '';
+  let h = '<div class="pantry-filter">';
+  h += `<button class="${pantryFilter==='all'?'active':''}" onclick="setPantryFilter('all')">All</button>`;
+  locs.forEach(loc => {
+    h += `<button class="${pantryFilter===loc?'active':''}" onclick="setPantryFilter('${loc.replace(/'/g,"\\'")}')">${loc}</button>`;
+  });
+  h += '</div>';
+  return h;
+}
+
+function setPantryFilter(loc) {
+  pantryFilter = loc;
+  render();
+}
+
+function render() {
+  renderBoard('sol');
+  renderBoard('map');
+  
+  // HL clock
+  const now = new Date();
+  const hl = getHLTime(now);
+  document.getElementById('hl-date').textContent = formatHL(hl);
+  document.getElementById('hl-detail').textContent = `${hl.tod} · ${hl.season}`;
+  document.getElementById('rl-time').textContent = now.toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
+}
+
+// ============ INTERACTIONS ============
+function switchTab(board, tab) {
+  if (board === 'sol') solTab = tab;
+  else mapTab = tab;
+  render();
+}
+
+function toggleBoard(board) {
+  const body = document.getElementById('body-'+board);
+  const toggle = document.getElementById('toggle-'+board);
+  body.classList.toggle('hidden');
+  toggle.classList.toggle('collapsed');
+}
+
+function updateTabOptions() {
+  const board = document.getElementById('f-board').value;
+  const tabSelect = document.getElementById('f-tab');
+  const tabs = board === 'sol' ? SOL_TABS : MAP_TABS;
+  tabSelect.innerHTML = tabs
+    .filter(t => t.id !== 'overdue')
+    .map(t => `<option value="${t.id}">${t.label}</option>`).join('');
+}
+
+function openAdd() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Add Timer';
+  document.getElementById('btn-delete').style.display = 'none';
+  document.getElementById('f-board').value = 'sol';
+  updateTabOptions();
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-type').value = 'npc';
+  document.getElementById('f-role').value = '';
+  document.getElementById('f-location').value = '';
+  document.getElementById('f-hl-days').value = '';
+  document.getElementById('f-hl-hours').value = '';
+  document.getElementById('f-hl-mins').value = '';
+  document.getElementById('f-clear-deadline').checked = false;
+  document.getElementById('f-hl-remaining').textContent = '';
+  document.getElementById('f-payment').value = 'food';
+  document.getElementById('f-recur').value = '';
+  document.getElementById('f-important').value = '0';
+  document.getElementById('f-objid').value = '';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function openEdit(id) {
+  const t = timers.find(x => x.id === id);
+  if (!t) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Edit: ' + t.name;
+  document.getElementById('btn-delete').style.display = '';
+  document.getElementById('f-board').value = t.board;
+  updateTabOptions();
+  document.getElementById('f-tab').value = t.tab;
+  document.getElementById('f-name').value = t.name;
+  document.getElementById('f-type').value = t.type;
+  document.getElementById('f-role').value = t.role;
+  document.getElementById('f-location').value = t.location;
+  // Show remaining HL time if deadline exists
+  document.getElementById('f-hl-days').value = '';
+  document.getElementById('f-hl-hours').value = '';
+  document.getElementById('f-hl-mins').value = '';
+  document.getElementById('f-clear-deadline').checked = false;
+  if (t.deadline) {
+    const remainMs = new Date(t.deadline) - new Date();
+    if (remainMs > 0) {
+      const hl = rlMsToHL(remainMs);
+      document.getElementById('f-hl-days').value = hl.d;
+      document.getElementById('f-hl-hours').value = hl.h;
+      document.getElementById('f-hl-mins').value = hl.m;
+      document.getElementById('f-hl-remaining').textContent = `Currently: ${hl.d}d ${hl.h}h ${hl.m}m HL remaining`;
+    } else {
+      document.getElementById('f-hl-remaining').textContent = 'OVERDUE';
+    }
+  } else {
+    document.getElementById('f-hl-remaining').textContent = 'No deadline set';
+  }
+  document.getElementById('f-payment').value = t.payment;
+  document.getElementById('f-recur').value = t.recur || '';
+  document.getElementById('f-important').value = t.important ? '1' : '0';
+  document.getElementById('f-objid').value = t.objId;
+  document.getElementById('f-notes').value = t.notes;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  editingId = null;
+}
+
+function saveTimer() {
+  const clearDeadline = document.getElementById('f-clear-deadline').checked;
+  const hlD = parseInt(document.getElementById('f-hl-days').value) || 0;
+  const hlH = parseInt(document.getElementById('f-hl-hours').value) || 0;
+  const hlM = parseInt(document.getElementById('f-hl-mins').value) || 0;
+  const hasHL = hlD > 0 || hlH > 0 || hlM > 0;
+  
+  let deadline = null;
+  if (clearDeadline) {
+    deadline = null;
+  } else if (hasHL) {
+    // Convert HL duration to RL ms: 1 HL day = 6 RL hours, 1 HL hour = 15 RL min, 1 HL min = 15 RL sec
+    const rlMs = hlD * 21600000 + hlH * 900000 + hlM * 15000;
+    deadline = new Date(Date.now() + rlMs).toISOString();
+  } else if (editingId) {
+    // No change — keep existing deadline
+    const existing = timers.find(t => t.id === editingId);
+    deadline = existing ? existing.deadline : null;
+  }
+  
+  const data = {
+    board: document.getElementById('f-board').value,
+    tab: document.getElementById('f-tab').value,
+    name: document.getElementById('f-name').value.trim(),
+    type: document.getElementById('f-type').value,
+    role: document.getElementById('f-role').value.trim(),
+    location: document.getElementById('f-location').value.trim(),
+    deadline,
+    payment: document.getElementById('f-payment').value,
+    recur: parseInt(document.getElementById('f-recur').value) || 0,
+    important: document.getElementById('f-important').value === '1',
+    objId: document.getElementById('f-objid').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  if (!data.name) { alert('Name is required'); return; }
+  
+  if (editingId) {
+    const idx = timers.findIndex(t => t.id === editingId);
+    if (idx >= 0) timers[idx] = { ...timers[idx], ...data };
+  } else {
+    data.id = 't' + Date.now();
+    timers.push(data);
+  }
+  saveTimers(timers);
+  closeModal();
+  render();
+}
+
+function deleteTimer() {
+  if (!editingId) return;
+  if (!confirm('Delete this timer?')) return;
+  timers = timers.filter(t => t.id !== editingId);
+  saveTimers(timers);
+  closeModal();
+  render();
+}
+
+function resetTimer(id) {
+  const t = timers.find(x => x.id === id);
+  if (!t) return;
+  
+  if (t.recur > 0) {
+    // Recurring: advance by recur HL days from now
+    const rlMs = t.recur * 6 * 3600000;
+    t.deadline = new Date(Date.now() + rlMs).toISOString();
+  } else {
+    // Non-recurring: prompt for HL duration
+    const input = prompt('HL time from now (e.g. "3d 12h" or "5d" or "0" to clear):');
+    if (input === null) return;
+    const trimmed = input.trim();
+    if (trimmed === '' || trimmed === '0') {
+      t.deadline = null;
+    } else {
+      const dMatch = trimmed.match(/(\d+)\s*d/i);
+      const hMatch = trimmed.match(/(\d+)\s*h/i);
+      const mMatch = trimmed.match(/(\d+)\s*m/i);
+      const hlD = dMatch ? parseInt(dMatch[1]) : 0;
+      const hlH = hMatch ? parseInt(hMatch[1]) : 0;
+      const hlM = mMatch ? parseInt(mMatch[1]) : 0;
+      if (hlD === 0 && hlH === 0 && hlM === 0) {
+        // Try parsing as just a number of HL days
+        const num = parseInt(trimmed);
+        if (!isNaN(num) && num > 0) {
+          t.deadline = new Date(Date.now() + num * 21600000).toISOString();
+        } else {
+          alert('Could not parse. Use format like "3d 12h" or "5d 6h 30m"');
+          return;
+        }
+      } else {
+        const rlMs = hlD * 21600000 + hlH * 900000 + hlM * 15000;
+        t.deadline = new Date(Date.now() + rlMs).toISOString();
+      }
+    }
+  }
+  saveTimers(timers);
+  render();
+}
+
+function resetToDefaults() {
+  timers = defaultTimers();
+  saveTimers(timers);
+  chains = defaultChains();
+  saveChainStore(chains);
+  render();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({timers, chains, anchor: getAnchor()}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sol_timers_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.timers && Array.isArray(data.timers)) {
+        timers = data.timers;
+        saveTimers(timers);
+        if (data.chains && Array.isArray(data.chains)) {
+          chains = data.chains;
+          saveChainStore(chains);
+        }
+        if (data.anchor) localStorage.setItem('sol_hl_anchor', JSON.stringify(data.anchor));
+        render();
+        alert('Imported ' + timers.length + ' timers' + (data.chains ? ' and ' + data.chains.length + ' chains' : ''));
+      } else {
+        alert('Invalid file format');
+      }
+    } catch(err) {
+      alert('Error reading file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('chain-modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeChainModal();
+});
+
+// ============ MAIN LOOP ============
+loadSyncConfig();
+render();
+// Initial pull from cloud on load
+if (isSyncConfigured()) pullFromCloud();
+setInterval(function() {
+  autoAdvanceChains();
+  render();
+}, 1000);
+</script>
+</body>
+</html>
