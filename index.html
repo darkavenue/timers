@@ -98,10 +98,11 @@ select{appearance:auto}
 .tag-loc{background:var(--bg);border:1px solid var(--border);color:var(--text2)}
 .tag-recur{background:var(--accent2);color:#fff}
 .tag-morph{background:var(--blue);color:#fff}
-.timer-date{font-size:11px;color:var(--text3)}
+.timer-date{font-size:11px;color:var(--text2);font-weight:500}
 .timer-actions{display:flex;gap:4px;margin-left:auto}
 .timer-actions button{font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);color:var(--text2)}
 .timer-actions button:hover{background:var(--bg);color:var(--text)}
+.timer-edited{font-size:9px;color:var(--text3);opacity:.55;margin-top:1px}
 
 /* Add button */
 .add-btn{position:fixed;bottom:16px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#1a1a1f;font-size:28px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:90}
@@ -129,7 +130,7 @@ select{appearance:auto}
 .empty{text-align:center;padding:20px;color:var(--text3);font-size:13px}
 
 /* HL date in timer */
-.hl-date{color:var(--accent);font-size:11px}
+.hl-date{color:var(--accent);font-size:11px;font-weight:500}
 
 /* Farming calendar */
 .farm-cal{background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
@@ -266,6 +267,18 @@ select{appearance:auto}
       <em>Test mode expires in 30 days. To make it permanent, go to Rules tab and set:<br>
       <code>{"rules":{".read":true,".write":true}}</code> then Publish.</em>
     </div>
+  </div>
+</div>
+
+<!-- Master Board -->
+<div class="board" id="board-master">
+  <div class="board-header" onclick="toggleBoard('master')">
+    <h2>🔥 Nearest Deadlines</h2>
+    <span class="toggle" id="toggle-master">▼</span>
+  </div>
+  <div class="board-body" id="body-master">
+    <div class="tabs" id="tabs-master"></div>
+    <div class="timer-list" id="list-master"></div>
   </div>
 </div>
 
@@ -511,6 +524,7 @@ const MAP_TABS = [
 
 let solTab = 'priority';
 let mapTab = 'overdue';
+let masterTab = 'all';
 let editingId = null;
 let pantryFilter = 'all';
 let deadlineMode = 'rl'; // 'hl' or 'rl'
@@ -767,6 +781,7 @@ function startChain(chainId, location) {
     important: false,
     objId: step.objId || '',
     notes: 'Step 1/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours),
+    lastEdited: Date.now(),
   });
   saveTimers(timers);
   solTab = 'morphs';
@@ -796,6 +811,7 @@ function advanceChain(timerId) {
   t.objId = step.objId || '';
   t.deadline = deadline;
   t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours);
+  t.lastEdited = Date.now();
   saveTimers(timers);
   render();
 }
@@ -822,6 +838,7 @@ function autoAdvanceChains() {
       t.objId = step.objId || '';
       t.deadline = deadline;
       t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours);
+      t.lastEdited = Date.now();
       changed = true;
       if (!deadline) break; // manual step — stop cascading
     }
@@ -1166,6 +1183,8 @@ function renderRow(t) {
     }
   }
 
+  const editedHTML = t.lastEdited ? `<div class="timer-edited">last edited: ${new Date(t.lastEdited).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true})}</div>` : '';
+
   return `<div class="timer-row ${status}" data-id="${t.id}">
     <div class="timer-top">
       <div class="timer-name">${starHTML}${t.name}</div>
@@ -1186,6 +1205,7 @@ function renderRow(t) {
         <button onclick="openEdit('${t.id}')">Edit</button>
       </div>
     </div>
+    ${editedHTML}
   </div>`;
 }
 
@@ -1311,6 +1331,7 @@ function setPantryFilter(loc) {
 }
 
 function render() {
+  renderMasterBoard();
   renderBoard('sol');
   renderBoard('map');
   
@@ -1322,9 +1343,48 @@ function render() {
   document.getElementById('rl-time').textContent = now.toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
 }
 
+const MASTER_TABS = [
+  {id:'all',label:'All',icon:'🔥'},
+  {id:'upkeep',label:'Upkeep',icon:'🍖'},
+  {id:'farming',label:'Farming',icon:'🌾'},
+];
+
+function renderMasterBoard() {
+  const tabsEl = document.getElementById('tabs-master');
+  const listEl = document.getElementById('list-master');
+  
+  tabsEl.innerHTML = MASTER_TABS.map(tb => {
+    const active = tb.id === masterTab ? ' active' : '';
+    return `<button class="tab${active}" onclick="switchTab('master','${tb.id}')">${tb.icon} ${tb.label}</button>`;
+  }).join('');
+  
+  // Collect all timers with deadlines set
+  let pool = timers.filter(t => t.deadline);
+  
+  // Filter by master tab
+  if (masterTab === 'upkeep') {
+    pool = pool.filter(t => t.payment !== 'none' || t.type === 'priority');
+  } else if (masterTab === 'farming') {
+    pool = pool.filter(t => t.type === 'farm' || t.type === 'chain' || t.tab === 'farming' || t.tab === 'morphs' || t.type === 'morph');
+  }
+  
+  // Sort by deadline soonest first (overdue at top, then urgent, then ok)
+  pool.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  
+  // Take top 20
+  pool = pool.slice(0, 20);
+  
+  if (pool.length === 0) {
+    listEl.innerHTML = '<div class="empty">No active timers with deadlines set</div>';
+  } else {
+    listEl.innerHTML = pool.map(renderRow).join('');
+  }
+}
+
 // ============ INTERACTIONS ============
 function switchTab(board, tab) {
   if (board === 'sol') solTab = tab;
+  else if (board === 'master') masterTab = tab;
   else mapTab = tab;
   render();
 }
@@ -1461,6 +1521,7 @@ function saveTimer() {
     notes: document.getElementById('f-notes').value.trim(),
   };
   if (!data.name) { alert('Name is required'); return; }
+  data.lastEdited = Date.now();
   
   if (editingId) {
     const idx = timers.findIndex(t => t.id === editingId);
@@ -1517,6 +1578,7 @@ function resetTimer(id) {
       t.deadline = new Date(Date.now() + rlMs).toISOString();
     }
   }
+  t.lastEdited = Date.now();
   saveTimers(timers);
   render();
 }
