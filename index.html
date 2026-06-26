@@ -203,6 +203,21 @@ select{appearance:auto}
 .sync-panel .help ol{margin:4px 0 4px 16px}
 .sync-panel .help li{margin-bottom:3px}
 
+/* Search bar */
+.search-bar{margin-bottom:10px}
+.search-bar input{font-size:13px;padding:8px 12px;border-radius:8px;background:var(--bg2);width:100%}
+.search-results{margin-bottom:12px}
+.search-results .board-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:8px 0 4px 2px}
+
+/* Paste field */
+.paste-field{margin-top:4px}
+.paste-field input{font-size:12px;padding:6px 8px;border:1px dashed var(--border);background:var(--bg);border-radius:6px;color:var(--text)}
+.paste-field input::placeholder{color:var(--text3);font-style:italic}
+
+/* Pantry presets */
+.pantry-presets{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.pantry-presets button{font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);color:var(--text2);background:var(--bg)}
+
 /* Pantry location filter */
 .pantry-filter{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;padding:6px 0}
 .pantry-filter button{font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);color:var(--text2)}
@@ -272,6 +287,12 @@ select{appearance:auto}
     </div>
   </div>
 </div>
+
+<!-- Search -->
+<div class="search-bar">
+  <input type="text" id="search-input" placeholder="🔍 Search timers by name..." oninput="renderSearch()">
+</div>
+<div class="search-results" id="search-results"></div>
 
 <!-- Master Board -->
 <div class="board" id="board-master">
@@ -353,6 +374,9 @@ select{appearance:auto}
     </div>
     <div class="field">
       <label>Deadline (time from now)</label>
+      <div class="paste-field" style="margin-bottom:5px">
+        <input type="text" id="f-paste" placeholder="Paste from game: e.g. '304 hours, 30 minutes' or '2 days, 5 hours'" oninput="parseGameTime(this.value)">
+      </div>
       <div style="display:flex;gap:2px;margin-bottom:5px">
         <button type="button" id="f-mode-rl" onclick="setDeadlineMode('rl')" style="font-size:11px;padding:3px 10px;border-radius:4px 0 0 4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-weight:600">RL</button>
         <button type="button" id="f-mode-hl" onclick="setDeadlineMode('hl')" style="font-size:11px;padding:3px 10px;border-radius:0 4px 4px 0;border:1px solid var(--border);background:transparent;color:var(--text2)">HL</button>
@@ -1306,12 +1330,15 @@ function renderBoard(board) {
   const tabsEl = document.getElementById('tabs-'+board);
   const listEl = document.getElementById('list-'+board);
   
-  // Count overdue for map
-  const odCount = board === 'map' ? timers.filter(t => t.board==='map' && t.tab!=='overdue' && isOverdue(t)).length : 0;
-  
   tabsEl.innerHTML = tabs.map(tb => {
     const active = tb.id === curTab ? ' active' : '';
-    const badge = tb.id === 'overdue' && odCount > 0 ? `<span class="badge">${odCount}</span>` : '';
+    let count = 0;
+    if (tb.id === 'overdue') {
+      count = timers.filter(t => t.board==='map' && t.tab!=='overdue' && isOverdue(t)).length;
+    } else {
+      count = timers.filter(t => t.board === board && t.tab === tb.id && isOverdue(t)).length;
+    }
+    const badge = count > 0 ? `<span class="badge">${count}</span>` : '';
     return `<button class="tab${active}" onclick="switchTab('${board}','${tb.id}')">${tb.icon} ${tb.label}${badge}</button>`;
   }).join('');
   
@@ -1320,8 +1347,13 @@ function renderBoard(board) {
   if (board === 'sol' && curTab === 'farming') {
     html += renderFarmCalendar();
   }
-  // Pantry location filter
+  // Pantry location filter + presets
   if (board === 'sol' && curTab === 'pantry') {
+    html += '<div class="pantry-presets">';
+    PANTRY_PRESETS.forEach((p, i) => {
+      html += `<button onclick="addPantryPreset(${i})">+ ${p.name} (${p.rlDays}d${p.rlHours?p.rlHours+'h':''})</button>`;
+    });
+    html += '</div>';
     html += renderPantryFilter();
   }
   // Chain library on Morphs tab
@@ -1455,6 +1487,87 @@ function renderMasterBoard() {
 }
 
 // ============ INTERACTIONS ============
+
+// Game time parser — handles "304 hours, 30 minutes", "2 days, 5 hours", etc.
+function parseGameTime(text) {
+  if (!text || !text.trim()) return;
+  const t = text.toLowerCase();
+  const dMatch = t.match(/(\d+)\s*(?:days?|d\b)/);
+  const hMatch = t.match(/(\d+)\s*(?:hours?|h\b|hrs?)/);
+  const mMatch = t.match(/(\d+)\s*(?:minutes?|mins?|m\b)/);
+  let days = dMatch ? parseInt(dMatch[1]) : 0;
+  let hours = hMatch ? parseInt(hMatch[1]) : 0;
+  let mins = mMatch ? parseInt(mMatch[1]) : 0;
+  if (days === 0 && hours === 0 && mins === 0) return;
+  // Normalize large hour values into days+hours
+  if (hours >= 24) {
+    days += Math.floor(hours / 24);
+    hours = hours % 24;
+  }
+  // Always RL when pasting from game
+  if (deadlineMode !== 'rl') setDeadlineMode('rl');
+  document.getElementById('f-hl-days').value = days;
+  document.getElementById('f-hl-hours').value = hours;
+  document.getElementById('f-hl-mins').value = mins;
+}
+
+// Search
+function renderSearch() {
+  const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  const el = document.getElementById('search-results');
+  if (!q) { el.innerHTML = ''; return; }
+  const matches = timers.filter(t => t.name.toLowerCase().includes(q) || (t.location && t.location.toLowerCase().includes(q)) || (t.notes && t.notes.toLowerCase().includes(q)));
+  if (matches.length === 0) {
+    el.innerHTML = '<div class="empty">No matches</div>';
+    return;
+  }
+  // Group by board
+  const groups = {};
+  matches.forEach(t => {
+    const key = t.board === 'sol' ? 'Sol\'s Board' : 'Mapulhurst';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  });
+  let html = '';
+  for (const [label, items] of Object.entries(groups)) {
+    html += `<div class="board-label">${label} (${items.length})</div>`;
+    html += '<div class="timer-list">' + items.sort((a,b) => {
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    }).map(renderRow).join('') + '</div>';
+  }
+  el.innerHTML = html;
+}
+
+// Pantry presets
+const PANTRY_PRESETS = [
+  {name:'Roasted fish batch',rlDays:7,rlHours:12,location:'Mapulhurst',notes:'10× roasted fish, 54 upkeep each'},
+  {name:'Pickled beetroots (keg)',rlDays:7,rlHours:12,location:'Mapulhurst',notes:'24 beetroots from keg — bake all pies within window!'},
+  {name:'Oat bushels',rlDays:90,rlHours:0,location:'Mapulhurst',notes:'Divide into dry oat piles immediately — dry oats don\'t decay'},
+  {name:'Herb bundles',rlDays:7,rlHours:12,location:'Mapulhurst',notes:'20 bundles per harvest'},
+  {name:'Land writ',rlDays:15,rlHours:0,location:'Mapulhurst',notes:'Certify before decay!'},
+];
+
+function addPantryPreset(idx) {
+  const p = PANTRY_PRESETS[idx];
+  const rlMs = p.rlDays * 86400000 + p.rlHours * 3600000;
+  timers.push({
+    id: 't' + Date.now(),
+    board: 'sol', tab: 'pantry',
+    name: p.name, type: 'decay',
+    role: '', location: p.location,
+    deadline: new Date(Date.now() + rlMs).toISOString(),
+    payment: 'none', recur: 0,
+    important: false, objId: '',
+    notes: p.notes,
+    lastEdited: Date.now(),
+  });
+  saveTimers(timers);
+  solTab = 'pantry';
+  render();
+}
 function switchTab(board, tab) {
   if (board === 'sol') solTab = tab;
   else if (board === 'master') masterTab = tab;
@@ -1494,6 +1607,7 @@ function openAdd() {
   document.getElementById('f-hl-mins').value = '';
   document.getElementById('f-clear-deadline').checked = false;
   document.getElementById('f-hl-remaining').textContent = '';
+  document.getElementById('f-paste').value = '';
   setDeadlineMode('rl');
   document.getElementById('f-payment').value = 'food';
   document.getElementById('f-recur').value = '';
@@ -1523,6 +1637,7 @@ function openEdit(id) {
   document.getElementById('f-hl-mins').value = '';
   document.getElementById('f-clear-deadline').checked = false;
   setDeadlineMode('rl');
+  document.getElementById('f-paste').value = '';
   if (t.deadline) {
     const remainMs = new Date(t.deadline) - new Date();
     if (remainMs > 0) {
