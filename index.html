@@ -230,6 +230,7 @@ select{appearance:auto}
   <button onclick="document.getElementById('import-file').click()">⬆ Import</button>
   <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
   <button onclick="syncNow()">☁ Sync Now</button>
+  <button onclick="openChainPicker()" style="color:var(--green)">▶ Start Chain</button>
   <button onclick="if(confirm('Reset ALL timers to default roster? This cannot be undone.'))resetToDefaults()">↺ Reset All</button>
 </div>
 
@@ -416,7 +417,7 @@ select{appearance:auto}
       <input id="cf-name" placeholder="e.g. Potato Pipeline">
     </div>
     <div class="field">
-      <label>Steps (in morph order)</label>
+      <label>Steps (in morph order) — durations are RL time</label>
       <div id="chain-steps-list"></div>
       <button style="font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);color:var(--accent);margin-top:4px" onclick="addChainStep()">+ Add Step</button>
     </div>
@@ -424,6 +425,19 @@ select{appearance:auto}
       <button class="btn btn-cancel" onclick="closeChainModal()">Cancel</button>
       <button class="btn btn-danger" id="btn-delete-chain" style="display:none" onclick="deleteChain()">Delete</button>
       <button class="btn btn-primary" onclick="saveChain()">Save Chain</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chain Picker Modal -->
+<div class="modal-overlay" id="chain-picker-overlay">
+  <div class="modal" id="chain-picker">
+    <h3>Start a Morph Chain</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Pick a template. Each step auto-advances when its RL timer fires.</p>
+    <div id="chain-picker-list"></div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn btn-cancel" onclick="closeChainPicker()">Cancel</button>
+      <button class="btn btn-cancel" onclick="closeChainPicker();openChainEditor()" style="color:var(--accent)">+ Create New Template</button>
     </div>
   </div>
 </div>
@@ -711,6 +725,20 @@ function hlDurationLabel(hlDays, hlHours) {
   s += ' HL (~' + (rlD > 0 ? rlD + 'd ' : '') + rlHr + 'h RL)';
   return s;
 }
+// Chain steps use RL time — all MUD morphs are in real time
+function chainStepMs(step) {
+  const d = step.rlDays ?? step.hlDays ?? 0;
+  const h = step.rlHours ?? step.hlHours ?? 0;
+  return d * 86400000 + h * 3600000;
+}
+function rlLabel(step) {
+  const d = step.rlDays ?? step.hlDays ?? 0;
+  const h = step.rlHours ?? step.hlHours ?? 0;
+  if (d === 0 && h === 0) return 'manual action';
+  let s = d + 'd';
+  if (h) s += ' ' + h + 'h';
+  return s + ' RL';
+}
 
 function getChains() {
   try {
@@ -728,26 +756,32 @@ function defaultChains() {
     {
       id: 'ch1', name: 'Potato Pipeline',
       steps: [
-        {name:'Soil mounds',objId:'#2437',hlDays:3,hlHours:0,morphsTo:'Small green shoots'},
-        {name:'Small green shoots',objId:'#2438',hlDays:9,hlHours:12,morphsTo:'Tall broad-leaved plants'},
-        {name:'Tall broad-leaved plants',objId:'#2439',hlDays:10,hlHours:12,morphsTo:'Harvestable potato plants'},
-        {name:'Harvestable potato plants',objId:'#2440',hlDays:7,hlHours:12,morphsTo:'Wilting plants — HARVEST!'},
+        {name:'Soil mounds',objId:'#2437',rlDays:3,rlHours:0,morphsTo:'Small green shoots'},
+        {name:'Small green shoots',objId:'#2438',rlDays:9,rlHours:12,morphsTo:'Tall broad-leaved plants'},
+        {name:'Tall broad-leaved plants',objId:'#2439',rlDays:10,rlHours:12,morphsTo:'Harvestable potato plants'},
+        {name:'Harvestable potato plants',objId:'#2440',rlDays:7,rlHours:12,morphsTo:'Wilting plants — HARVEST!'},
       ]
     },
     {
       id: 'ch2', name: 'Onion Pipeline',
       steps: [
-        {name:'Mounded row of dirt',objId:'#2427',hlDays:3,hlHours:18,morphsTo:'Green stems'},
-        {name:'Green stems',objId:'#2428',hlDays:22,hlHours:12,morphsTo:'Harvest ready onions'},
-        {name:'Harvest ready onions',objId:'#2429',hlDays:7,hlHours:12,morphsTo:'Wilting — HARVEST!'},
+        {name:'Mounded row of dirt',objId:'#2427',rlDays:3,rlHours:18,morphsTo:'Green stems'},
+        {name:'Green stems',objId:'#2428',rlDays:22,rlHours:12,morphsTo:'Harvest ready onions'},
+        {name:'Harvest ready onions',objId:'#2429',rlDays:7,rlHours:12,morphsTo:'Wilting — HARVEST!'},
       ]
     },
     {
       id: 'ch3', name: 'Beekeeping Cycle',
       steps: [
-        {name:'Mildly buzzing colony',objId:'#65074',hlDays:37,hlHours:12,morphsTo:'Buzzing well-populated colony'},
-        {name:'Buzzing well-populated colony',objId:'#65075',hlDays:0,hlHours:0,morphsTo:'HARVEST ACTION → angrily buzzing'},
-        {name:'Angrily buzzing colony',objId:'#65076',hlDays:2,hlHours:0,morphsTo:'Quiet dormant colony'},
+        {name:'Mildly buzzing colony',objId:'#65074',rlDays:37,rlHours:12,morphsTo:'Buzzing well-populated colony'},
+        {name:'Buzzing well-populated colony',objId:'#65075',rlDays:0,rlHours:0,morphsTo:'HARVEST ACTION → angrily buzzing'},
+        {name:'Angrily buzzing colony',objId:'#65076',rlDays:2,rlHours:0,morphsTo:'Quiet dormant colony'},
+      ]
+    },
+    {
+      id: 'ch4', name: 'Land Writ',
+      steps: [
+        {name:'Land writ acquired',objId:'',rlDays:15,rlHours:0,morphsTo:'DECAYS — certify before this!'},
       ]
     },
   ];
@@ -766,7 +800,7 @@ function startChain(chainId, location) {
   const loc = location || prompt('Location for this chain (e.g. Mapulhurst):');
   if (loc === null) return;
   const step = chain.steps[0];
-  const rlMs = hlToRLMs(step.hlDays, step.hlHours);
+  const rlMs = chainStepMs(step);
   const deadline = rlMs > 0 ? new Date(Date.now() + rlMs).toISOString() : null;
   timers.push({
     id: 't' + Date.now(),
@@ -780,7 +814,7 @@ function startChain(chainId, location) {
     payment: 'none', recur: 0,
     important: false,
     objId: step.objId || '',
-    notes: 'Step 1/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours),
+    notes: 'Step 1/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + rlLabel(step),
     lastEdited: Date.now(),
   });
   saveTimers(timers);
@@ -804,13 +838,13 @@ function advanceChain(timerId) {
     return;
   }
   const step = chain.steps[nextIdx];
-  const rlMs = hlToRLMs(step.hlDays, step.hlHours);
+  const rlMs = chainStepMs(step);
   const deadline = rlMs > 0 ? new Date(Date.now() + rlMs).toISOString() : null;
   t.chainStep = nextIdx;
   t.name = chain.name + ' — ' + step.name;
   t.objId = step.objId || '';
   t.deadline = deadline;
-  t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours);
+  t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + rlLabel(step);
   t.lastEdited = Date.now();
   saveTimers(timers);
   render();
@@ -830,14 +864,14 @@ function autoAdvanceChains() {
       const nextIdx = (t.chainStep || 0) + 1;
       if (nextIdx >= chain.steps.length) break; // last step — don't auto-remove, user dismisses
       const step = chain.steps[nextIdx];
-      const rlMs = hlToRLMs(step.hlDays, step.hlHours);
+      const rlMs = chainStepMs(step);
       // If next step is 0-duration (manual action), advance to it but leave deadline null
       const deadline = rlMs > 0 ? new Date(Date.now() + rlMs).toISOString() : null;
       t.chainStep = nextIdx;
       t.name = chain.name + ' — ' + step.name;
       t.objId = step.objId || '';
       t.deadline = deadline;
-      t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + hlDurationLabel(step.hlDays, step.hlHours);
+      t.notes = 'Step ' + (nextIdx+1) + '/' + chain.steps.length + ' → ' + step.morphsTo + ' | ' + rlLabel(step);
       t.lastEdited = Date.now();
       changed = true;
       if (!deadline) break; // manual step — stop cascading
@@ -879,7 +913,9 @@ function renderChainLibrary() {
       c.steps.forEach((s, i) => {
         if (i > 0) h += ' <span class="arrow">→</span> ';
         h += `<span class="chain-card-step">${s.name}`;
-        if (s.hlDays > 0 || s.hlHours > 0) h += ` <span style="color:var(--text3)">(${s.hlDays}d${s.hlHours ? s.hlHours+'h':''})</span>`;
+        const sd = s.rlDays ?? s.hlDays ?? 0;
+        const sh = s.rlHours ?? s.hlHours ?? 0;
+        if (sd > 0 || sh > 0) h += ` <span style="color:var(--text3)">(${sd}d${sh ? sh+'h':''})</span>`;
         h += '</span>';
       });
       h += '</div></div>';
@@ -887,6 +923,36 @@ function renderChainLibrary() {
   }
   h += '</div>';
   return h;
+}
+
+// Chain picker — simple start UI
+function openChainPicker() {
+  const el = document.getElementById('chain-picker-list');
+  if (chains.length === 0) {
+    el.innerHTML = '<div class="empty">No chain templates yet. Create one first.</div>';
+  } else {
+    el.innerHTML = chains.map(c => {
+      const totalMs = c.steps.reduce((sum, s) => sum + chainStepMs(s), 0);
+      const totalD = Math.floor(totalMs / 86400000);
+      const totalH = Math.floor((totalMs % 86400000) / 3600000);
+      const stepsPreview = c.steps.map(s => {
+        const lab = rlLabel(s);
+        return `<span style="color:var(--text)">${s.name}</span> <span style="color:var(--text3)">(${lab})</span>`;
+      }).join(' → ');
+      return `<div class="chain-card" style="margin-bottom:8px">
+        <div class="chain-card-top">
+          <span class="chain-card-name">${c.name}</span>
+          <button onclick="closeChainPicker();startChain('${c.id}')" style="font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid var(--green);color:var(--green);font-weight:600">▶ Start</button>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5">${stepsPreview}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">${c.steps.length} steps · ~${totalD}d ${totalH}h RL total</div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('chain-picker-overlay').classList.add('show');
+}
+function closeChainPicker() {
+  document.getElementById('chain-picker-overlay').classList.remove('show');
 }
 
 // Chain editor
@@ -898,13 +964,17 @@ function openChainEditor(id) {
     document.getElementById('chain-modal-title').textContent = 'Edit: ' + c.name;
     document.getElementById('btn-delete-chain').style.display = '';
     document.getElementById('cf-name').value = c.name;
-    chainEditorSteps = c.steps.map(s => ({...s}));
+    chainEditorSteps = c.steps.map(s => ({
+      name: s.name, objId: s.objId, morphsTo: s.morphsTo,
+      rlDays: s.rlDays ?? s.hlDays ?? 0,
+      rlHours: s.rlHours ?? s.hlHours ?? 0,
+    }));
   } else {
     editingChainId = null;
     document.getElementById('chain-modal-title').textContent = 'New Morph Chain';
     document.getElementById('btn-delete-chain').style.display = 'none';
     document.getElementById('cf-name').value = '';
-    chainEditorSteps = [{name:'',objId:'',hlDays:0,hlHours:0,morphsTo:''}];
+    chainEditorSteps = [{name:'',objId:'',rlDays:0,rlHours:0,morphsTo:''}];
   }
   renderChainSteps();
   document.getElementById('chain-modal-overlay').classList.add('show');
@@ -914,7 +984,7 @@ function closeChainModal() {
   editingChainId = null;
 }
 function addChainStep() {
-  chainEditorSteps.push({name:'',objId:'',hlDays:0,hlHours:0,morphsTo:''});
+  chainEditorSteps.push({name:'',objId:'',rlDays:0,rlHours:0,morphsTo:''});
   renderChainSteps();
 }
 function removeChainStep(i) {
@@ -922,7 +992,7 @@ function removeChainStep(i) {
   renderChainSteps();
 }
 function updateChainStep(i, field, val) {
-  chainEditorSteps[i][field] = field === 'hlDays' || field === 'hlHours' ? parseInt(val)||0 : val;
+  chainEditorSteps[i][field] = field === 'rlDays' || field === 'rlHours' ? parseInt(val)||0 : val;
 }
 function renderChainSteps() {
   const el = document.getElementById('chain-steps-list');
@@ -931,8 +1001,9 @@ function renderChainSteps() {
       <span class="step-num">${i+1}.</span>
       <input placeholder="Name" value="${s.name}" oninput="updateChainStep(${i},'name',this.value)" style="flex:2">
       <input placeholder="#ID" value="${s.objId}" oninput="updateChainStep(${i},'objId',this.value)" style="flex:1;max-width:70px">
-      <input type="number" placeholder="d" value="${s.hlDays||''}" oninput="updateChainStep(${i},'hlDays',this.value)" style="flex:0;max-width:40px" min="0" title="HL days">
-      <input type="number" placeholder="h" value="${s.hlHours||''}" oninput="updateChainStep(${i},'hlHours',this.value)" style="flex:0;max-width:40px" min="0" title="HL hours">
+      <input type="number" placeholder="d" value="${s.rlDays ?? s.hlDays ?? ''}" oninput="updateChainStep(${i},'rlDays',this.value)" style="flex:0;max-width:44px" min="0" title="RL days">
+      <input type="number" placeholder="h" value="${s.rlHours ?? s.hlHours ?? ''}" oninput="updateChainStep(${i},'rlHours',this.value)" style="flex:0;max-width:44px" min="0" title="RL hours">
+      <span style="font-size:9px;color:var(--text3)">RL</span>
       <input placeholder="→ morphs to" value="${s.morphsTo}" oninput="updateChainStep(${i},'morphsTo',this.value)" style="flex:2">
       <button class="remove-step" onclick="removeChainStep(${i})">✕</button>
     </div>
@@ -1633,6 +1704,9 @@ document.getElementById('modal-overlay').addEventListener('click', function(e) {
 });
 document.getElementById('chain-modal-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeChainModal();
+});
+document.getElementById('chain-picker-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeChainPicker();
 });
 
 // ============ MAIN LOOP ============
