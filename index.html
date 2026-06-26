@@ -231,7 +231,9 @@ select{appearance:auto}
   <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
   <button onclick="syncNow()">☁ Sync Now</button>
   <button onclick="openChainPicker()" style="color:var(--green)">▶ Start Chain</button>
-  <button onclick="if(confirm('Reset ALL timers to default roster? This cannot be undone.'))resetToDefaults()">↺ Reset All</button>
+  <button onclick="mergeDefaults()">⊕ Merge New</button>
+  <button onclick="restoreBackup()">⎌ Restore</button>
+  <button onclick="if(confirm('Reset ALL timers to default roster? Your current data will be backed up automatically and can be restored.'))resetToDefaults()" style="color:var(--text3)">↺ Reset All</button>
 </div>
 
 <!-- Sync status -->
@@ -1654,12 +1656,64 @@ function resetTimer(id) {
   render();
 }
 
+function mergeDefaults() {
+  const defs = defaultTimers();
+  const defChains = defaultChains();
+  let addedTimers = 0;
+  let addedChains = 0;
+  // Add missing timers (match by name + board + tab)
+  defs.forEach(d => {
+    const exists = timers.some(t => t.name === d.name && t.board === d.board && t.tab === d.tab);
+    if (!exists) {
+      timers.push(d);
+      addedTimers++;
+    }
+  });
+  // Add missing chain templates (match by name)
+  defChains.forEach(dc => {
+    const exists = chains.some(c => c.name === dc.name);
+    if (!exists) {
+      chains.push(dc);
+      addedChains++;
+    }
+  });
+  // Update existing chain templates with corrected field names (rl migration)
+  chains.forEach(c => {
+    c.steps.forEach(s => {
+      if (s.hlDays !== undefined && s.rlDays === undefined) {
+        s.rlDays = s.hlDays; s.rlHours = s.hlHours || 0;
+        delete s.hlDays; delete s.hlHours;
+      }
+    });
+  });
+  saveTimers(timers);
+  saveChainStore(chains);
+  render();
+  alert('Merged: ' + addedTimers + ' new timer(s), ' + addedChains + ' new chain template(s). Existing timers untouched.');
+}
+
 function resetToDefaults() {
+  // Auto-backup before destructive reset
+  const backup = JSON.stringify({timers, chains, anchor: getAnchor()});
+  localStorage.setItem('sol_timers_pre_reset_backup', backup);
   timers = defaultTimers();
   saveTimers(timers);
   chains = defaultChains();
   saveChainStore(chains);
   render();
+  alert('Reset complete. A backup was saved — tap Restore Backup to undo.');
+}
+
+function restoreBackup() {
+  const backup = localStorage.getItem('sol_timers_pre_reset_backup');
+  if (!backup) { alert('No backup found.'); return; }
+  try {
+    const data = JSON.parse(backup);
+    if (data.timers) { timers = data.timers; saveTimers(timers); }
+    if (data.chains) { chains = data.chains; saveChainStore(chains); }
+    render();
+    alert('Restored ' + timers.length + ' timers from backup.');
+  } catch(e) { alert('Backup corrupted: ' + e.message); }
 }
 
 function exportData() {
