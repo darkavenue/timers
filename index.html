@@ -382,9 +382,9 @@ select{appearance:auto}
         <button type="button" id="f-mode-hl" onclick="setDeadlineMode('hl')" style="font-size:11px;padding:3px 10px;border-radius:0 4px 4px 0;border:1px solid var(--border);background:transparent;color:var(--text2)">HL</button>
       </div>
       <div class="row" style="gap:4px;align-items:center">
-        <input type="number" id="f-hl-days" placeholder="0" min="0" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">d</span>
-        <input type="number" id="f-hl-hours" placeholder="0" min="0" max="23" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">h</span>
-        <input type="number" id="f-hl-mins" placeholder="0" min="0" max="59" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">m</span>
+        <input type="number" id="f-hl-days" placeholder="0" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">d</span>
+        <input type="number" id="f-hl-hours" placeholder="0" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">h</span>
+        <input type="number" id="f-hl-mins" placeholder="0" style="min-width:56px;max-width:72px"><span style="font-size:11px;color:var(--text3)">m</span>
         <span id="f-mode-label" style="font-size:10px;color:var(--text3);margin-left:4px">RL</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
@@ -566,6 +566,56 @@ let solTab = 'priority';
 let mapTab = 'overdue';
 let masterTab = 'all';
 let editingId = null;
+
+// Custom tabs
+function getCustomTabs() {
+  try {
+    const s = localStorage.getItem('sol_custom_tabs');
+    if (s) return JSON.parse(s);
+  } catch(e){}
+  return { sol: [], map: [] };
+}
+function saveCustomTabs(ct) {
+  localStorage.setItem('sol_custom_tabs', JSON.stringify(ct));
+}
+let customTabs = getCustomTabs();
+
+function getAllTabs(board) {
+  const base = board === 'sol' ? SOL_TABS : MAP_TABS;
+  const custom = (board === 'sol' ? customTabs.sol : customTabs.map) || [];
+  return [...base, ...custom];
+}
+
+function addTab(board) {
+  const name = prompt('New tab name:');
+  if (!name || !name.trim()) return;
+  const id = 'custom_' + Date.now();
+  const tab = { id, label: name.trim(), icon: '📌' };
+  if (board === 'sol') {
+    customTabs.sol = customTabs.sol || [];
+    customTabs.sol.push(tab);
+  } else {
+    customTabs.map = customTabs.map || [];
+    customTabs.map.push(tab);
+  }
+  saveCustomTabs(customTabs);
+  if (board === 'sol') solTab = id;
+  else mapTab = id;
+  render();
+}
+
+function removeTab(board, tabId) {
+  if (!confirm('Delete this tab? Timers in it will remain but won\'t be visible until reassigned.')) return;
+  if (board === 'sol') {
+    customTabs.sol = (customTabs.sol || []).filter(t => t.id !== tabId);
+    if (solTab === tabId) solTab = 'priority';
+  } else {
+    customTabs.map = (customTabs.map || []).filter(t => t.id !== tabId);
+    if (mapTab === tabId) mapTab = 'overdue';
+  }
+  saveCustomTabs(customTabs);
+  render();
+}
 let pantryFilter = 'all';
 let deadlineMode = 'rl'; // 'hl' or 'rl'
 
@@ -1119,7 +1169,7 @@ async function pushToCloud() {
   syncBusy = true;
   updateSyncStatus('Pushing...', 'busy');
   try {
-    const data = { timers, chains, updated: Date.now(), device: DEVICE_ID };
+    const data = { timers, chains, customTabs, updated: Date.now(), device: DEVICE_ID };
     const res = await fetch(`${config.url}/sol/${encodeURIComponent(config.room)}.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1152,6 +1202,10 @@ async function pullFromCloud() {
       if (data.chains && Array.isArray(data.chains)) {
         chains = data.chains;
         localStorage.setItem('sol_chains', JSON.stringify(chains));
+      }
+      if (data.customTabs) {
+        customTabs = data.customTabs;
+        saveCustomTabs(customTabs);
       }
       lastSyncTime = data.updated;
       updateSyncStatus('Synced ' + new Date().toLocaleTimeString(), 'ok');
@@ -1325,12 +1379,12 @@ function getTabTimers(board, tab) {
 }
 
 function renderBoard(board) {
-  const tabs = board === 'sol' ? SOL_TABS : MAP_TABS;
+  const tabs = getAllTabs(board);
   const curTab = board === 'sol' ? solTab : mapTab;
   const tabsEl = document.getElementById('tabs-'+board);
   const listEl = document.getElementById('list-'+board);
   
-  tabsEl.innerHTML = tabs.map(tb => {
+  let tabsHTML = tabs.map(tb => {
     const active = tb.id === curTab ? ' active' : '';
     let count = 0;
     if (tb.id === 'overdue') {
@@ -1339,8 +1393,12 @@ function renderBoard(board) {
       count = timers.filter(t => t.board === board && t.tab === tb.id && isOverdue(t)).length;
     }
     const badge = count > 0 ? `<span class="badge">${count}</span>` : '';
-    return `<button class="tab${active}" onclick="switchTab('${board}','${tb.id}')">${tb.icon} ${tb.label}${badge}</button>`;
+    const isCustom = tb.id.startsWith('custom_');
+    const delBtn = isCustom && tb.id === curTab ? ` <span onclick="event.stopPropagation();removeTab('${board}','${tb.id}')" style="color:var(--red);cursor:pointer;font-size:10px">✕</span>` : '';
+    return `<button class="tab${active}" onclick="switchTab('${board}','${tb.id}')">${tb.icon} ${tb.label}${badge}${delBtn}</button>`;
   }).join('');
+  tabsHTML += `<button class="tab" onclick="addTab('${board}')" style="color:var(--text3);border-style:dashed">+</button>`;
+  tabsEl.innerHTML = tabsHTML;
   
   let html = '';
   // Farming calendar reference
@@ -1488,13 +1546,16 @@ function renderMasterBoard() {
 
 // ============ INTERACTIONS ============
 
-// Game time parser — handles "304 hours, 30 minutes", "2 days, 5 hours", etc.
+// Game time parser — handles "304 hours, 30 minutes", "2 days, 5 hours", "-120 hours", etc.
 function parseGameTime(text) {
   if (!text || !text.trim()) return;
-  const t = text.toLowerCase();
-  const dMatch = t.match(/(\d+)\s*(?:days?|d\b)/);
-  const hMatch = t.match(/(\d+)\s*(?:hours?|h\b|hrs?)/);
-  const mMatch = t.match(/(\d+)\s*(?:minutes?|mins?|m\b)/);
+  const t = text.toLowerCase().trim();
+  // Detect negative/overdue prefix
+  const isNeg = /^[-−]|^neg/i.test(t);
+  const cleaned = t.replace(/^[-−]\s*/, '').replace(/^negative\s*/i, '');
+  const dMatch = cleaned.match(/(\d+)\s*(?:days?|d\b)/);
+  const hMatch = cleaned.match(/(\d+)\s*(?:hours?|h\b|hrs?)/);
+  const mMatch = cleaned.match(/(\d+)\s*(?:minutes?|mins?|m\b)/);
   let days = dMatch ? parseInt(dMatch[1]) : 0;
   let hours = hMatch ? parseInt(hMatch[1]) : 0;
   let mins = mMatch ? parseInt(mMatch[1]) : 0;
@@ -1504,6 +1565,8 @@ function parseGameTime(text) {
     days += Math.floor(hours / 24);
     hours = hours % 24;
   }
+  // Apply negative sign
+  if (isNeg) { days = -days; hours = -hours; mins = -mins; }
   // Always RL when pasting from game
   if (deadlineMode !== 'rl') setDeadlineMode('rl');
   document.getElementById('f-hl-days').value = days;
@@ -1585,7 +1648,7 @@ function toggleBoard(board) {
 function updateTabOptions() {
   const board = document.getElementById('f-board').value;
   const tabSelect = document.getElementById('f-tab');
-  const tabs = board === 'sol' ? SOL_TABS : MAP_TABS;
+  const tabs = getAllTabs(board);
   tabSelect.innerHTML = tabs
     .filter(t => t.id !== 'overdue')
     .map(t => `<option value="${t.id}">${t.label}</option>`).join('');
@@ -1674,7 +1737,7 @@ function saveTimer() {
   const d = parseInt(document.getElementById('f-hl-days').value) || 0;
   const h = parseInt(document.getElementById('f-hl-hours').value) || 0;
   const m = parseInt(document.getElementById('f-hl-mins').value) || 0;
-  const hasInput = d > 0 || h > 0 || m > 0;
+  const hasInput = d !== 0 || h !== 0 || m !== 0;
   
   let deadline = null;
   if (clearDeadline) {
@@ -1687,6 +1750,7 @@ function saveTimer() {
       // HL: 1 HL day = 6 RL hours, 1 HL hour = 15 RL min, 1 HL min = 15 RL sec
       rlMs = d * 21600000 + h * 900000 + m * 15000;
     }
+    // rlMs can be negative — sets deadline in the past (already overdue)
     deadline = new Date(Date.now() + rlMs).toISOString();
   } else if (editingId) {
     // No change — keep existing deadline
@@ -1832,7 +1896,7 @@ function restoreBackup() {
 }
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({timers, chains, anchor: getAnchor()}, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({timers, chains, customTabs, anchor: getAnchor()}, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'sol_timers_backup_' + new Date().toISOString().slice(0,10) + '.json';
@@ -1852,6 +1916,10 @@ function importData(e) {
         if (data.chains && Array.isArray(data.chains)) {
           chains = data.chains;
           saveChainStore(chains);
+        }
+        if (data.customTabs) {
+          customTabs = data.customTabs;
+          saveCustomTabs(customTabs);
         }
         if (data.anchor) localStorage.setItem('sol_hl_anchor', JSON.stringify(data.anchor));
         render();
